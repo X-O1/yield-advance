@@ -7,3 +7,4 @@ pragma solidity ^0.8.30;
 error INVALID_LIQUIDITY_INDEX();
 error REPAY_ADVANCE_TO_WITHDRAW();
 error NOT_AUTHORIZED();
+error NO_REVENUE_TO_CLAIM();

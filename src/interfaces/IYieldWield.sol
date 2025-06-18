@@ -28,6 +28,8 @@ interface IYieldWield {
 
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256);
 
+    function claimRevenue(address _token) external returns (uint256);
+
     function getAndupdateAccountDebtFromYield(address _account, address _token) external returns (uint256);
 
     function getCollateralShares(address _account, address _token) external view returns (uint256);
