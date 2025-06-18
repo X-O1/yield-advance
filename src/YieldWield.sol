@@ -2,145 +2,145 @@
 pragma solidity ^0.8.30;
 
 import "./YieldWieldErrors.sol";
-import {IERC20} from "@openzeppelin/ERC20/IERC20.sol";
 import {IPool} from "@aave-v3-core/interfaces/IPool.sol";
 import {DataTypes} from "@aave-v3-core/protocol/libraries/types/DataTypes.sol";
 import {IPoolAddressesProvider} from "@aave-v3-core/interfaces/IPoolAddressesProvider.sol";
 
 contract YieldWield {
     IPool private immutable i_pool;
-    IERC20 public immutable i_stablecoin;
-    address public immutable i_stablecoinAddress;
-    IERC20 public immutable i_yieldBarringToken;
-    address public immutable i_yieldBarringTokenAddress;
     IPoolAddressesProvider public immutable i_addressesProvider;
-    address public immutable i_yieldWieldContractAddress;
 
-    // tracks accounts collateral pool ownership
-    mapping(address account => uint256 shares) public s_collateralShares;
-    uint256 private s_totalCollateralShares;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 shares))) public
+        s_collateralShares;
+    mapping(address protocol => uint256 totalShares) public s_totalCollateralShares;
 
-    // amount of locked collateral in dollar value
-    mapping(address account => uint256 amount) public s_collateral;
-    uint256 private s_totalCollateral;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
+        s_collateral;
+    mapping(address protocol => uint256 totalCollateral) public s_totalCollateral;
 
-    // amount of owed from taking an advance and needs to pay back to unlock collateral
-    mapping(address account => uint256 amount) public s_debt;
-    uint256 private s_totalDebt;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public s_debt;
+    mapping(address protocol => uint256 totalDebt) public s_totalDebt;
 
-    // amount of yield produced by an account from their collateral
-    mapping(address account => uint256 amount) public s_accountYield;
-    uint256 private s_totalAccountYield;
-    // total profit made from advance repayments and advance fees
-    uint256 private s_totalRevenueShares;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
+        s_accountYield;
+    mapping(address protocol => uint256 totalAccountYield) public s_totalAccountYield;
 
-    event Advance_Taken(address indexed account, uint256 indexed collateral, uint256 indexed advancePlusfee);
-    event Withdraw_Collateral(address indexed account, uint256 collateralWithdrawn);
-    event Advance_Repayment_Deposit(address indexed account, uint256 indexed repaidAmount, uint256 indexed currentDebt);
+    mapping(address protocol => uint256) public s_totalRevenueShares;
 
-    constructor(address _token, address _addressProvider, address _yieldBarringToken) {
-        i_stablecoin = IERC20(_token);
-        i_stablecoinAddress = _token;
-        i_yieldBarringToken = IERC20(_yieldBarringToken);
-        i_yieldBarringTokenAddress = _yieldBarringToken;
+    event Advance_Taken(
+        address indexed protocol,
+        address indexed account,
+        address indexed token,
+        uint256 collateral,
+        uint256 advancePlusFee
+    );
+    event Withdraw_Collateral(
+        address indexed protocol, address indexed account, address indexed token, uint256 collateralWithdrawn
+    );
+    event Advance_Repayment_Deposit(
+        address indexed protocol,
+        address indexed account,
+        address indexed token,
+        uint256 repaidAmount,
+        uint256 currentDebt
+    );
+
+    constructor(address _addressProvider) {
         i_addressesProvider = IPoolAddressesProvider(_addressProvider);
         i_pool = IPool(i_addressesProvider.getPool());
-        i_yieldWieldContractAddress = address(this);
     }
 
-    function getAdvance(address _account, uint256 _collateral, uint256 _advanceAmount) external {
+    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount) external {
+        address protocol = msg.sender;
+
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
         uint256 advancePlusFee = _advanceAmount + advanceFee;
         uint256 advanceMinusFee = _advanceAmount - advanceFee;
-        // uint256 collateralPlusAdvanceAndFees = _collateral + advancePlusFee;
-        uint256 collateralSharesMinted = _mintShares(_collateral);
-        // uint256 yieldBarringTokensNeeded = _getYieldBarringTokensNeededForStablecoinAmount(collateralPlusAdvanceAndFees);
+        uint256 collateralSharesMinted = _mintShares(_token, _collateral);
 
-        s_collateralShares[_account] += collateralSharesMinted;
-        s_collateral[_account] += _collateral;
-        s_debt[_account] += advanceMinusFee;
+        s_collateralShares[protocol][_account][_token] += collateralSharesMinted;
+        s_collateral[protocol][_account][_token] += _collateral;
+        s_debt[protocol][_account][_token] += advanceMinusFee;
 
-        s_totalCollateralShares += collateralSharesMinted;
-        s_totalCollateral += _collateral;
-        s_totalDebt += advanceMinusFee;
-        s_totalRevenueShares += advanceFee;
+        s_totalCollateralShares[protocol] += collateralSharesMinted;
+        s_totalCollateral[protocol] += _collateral;
+        s_totalDebt[protocol] += advanceMinusFee;
+        s_totalRevenueShares[protocol] += advanceFee;
 
-        // SAYV FACILTATS
+        // SAYV NEEDS
+        // make transfers
+        // update balances. collateral minus advance and fee should be subtracted from shares
+        // so they cant withdraw it.
+        // or just on any withdrawl check yield wield contract debt.
+        // all debt must be paid on yieldwield to withdraw collateral
 
-        // i_yieldBarringToken.transferFrom(msg.sender, address(this), yieldBarringTokensNeeded);
-        // i_pool.withdraw(i_stablecoinAddress, advanceMinusFee, _account);
-
-        emit Advance_Taken(_account, _collateral, advancePlusFee);
+        emit Advance_Taken(protocol, _account, _token, _collateral, advancePlusFee);
     }
 
-    function withdrawCollateral(address _account) external {
-        uint256 newYieldProducedByCollateral = _trackAccountYeild(_account);
+    function withdrawCollateral(address _account, address _token) external {
+        address protocol = msg.sender;
 
-        if (newYieldProducedByCollateral > 0 && s_debt[_account] > 0) {
-            s_debt[_account] -= newYieldProducedByCollateral;
-            s_totalDebt -= newYieldProducedByCollateral;
-        }
+        uint256 currentDebt = _getCurrentDebt(protocol, _account, _token);
+        if (currentDebt > 0) revert REPAY_ADVANCE_TO_WITHDRAW();
 
-        uint256 currentDebt = s_debt[_account];
-
-        if (currentDebt > 0) {
-            revert REPAY_ADVANCE_TO_WITHDRAW();
-        }
-
-        uint256 accountCollateral = s_collateral[_account];
-        uint256 accountShares = s_collateralShares[_account];
-        uint256 collateralSharesRedeemed = _redeemShares(accountCollateral);
+        uint256 accountCollateral = s_collateral[protocol][_account][_token];
+        uint256 accountShares = s_collateralShares[protocol][_account][_token];
+        uint256 collateralSharesRedeemed = _redeemShares(_token, accountCollateral);
         uint256 revenueShares = accountShares - collateralSharesRedeemed;
 
-        s_totalRevenueShares += revenueShares;
-        s_totalCollateralShares -= accountShares;
-        s_collateralShares[_account] = 0;
+        s_totalRevenueShares[protocol] += revenueShares;
+        s_totalCollateralShares[protocol] -= accountShares;
+        s_collateralShares[protocol][_account][_token] = 0;
+        s_collateral[protocol][_account][_token] = 0;
 
-        // SAYV FACILTATS
-        // i_yieldBarringToken.transfer(msg.sender, collateralSharesRedeemed);
+        // SAYV NEEDS
+        // make transfers
+        // update balances. collateral should be re-added to shares
+        // all debt must be paid on yieldwield to withdraw collateral
 
-        emit Withdraw_Collateral(_account, accountCollateral);
+        emit Withdraw_Collateral(protocol, _account, _token, accountCollateral);
     }
 
-    function repayAdvanceWithDeposit(address _account, uint256 _amount) external returns (uint256) {
-        uint256 currentDebt = updateAccountDebtFromYield(_account);
+    function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
+        address protocol = msg.sender;
 
+        uint256 currentDebt = _getCurrentDebt(protocol, _account, _token);
         if (currentDebt > 0 && _amount <= currentDebt) {
-            s_debt[_account] -= _amount;
-        }
-        // SAYV FACILTATS
-        // deposit funds
-        emit Advance_Repayment_Deposit(_account, _amount, s_debt[_account]);
-        return s_debt[_account];
-    }
-
-    // function claimRevenue()
-
-    // this needs to be called by chainlink to udate periodocly
-    // call before any collateral withdraw attempt
-    function updateAccountDebtFromYield(address _account) public returns (uint256) {
-        uint256 newYieldProducedByCollateral = _trackAccountYeild(_account);
-
-        if (newYieldProducedByCollateral > 0 && s_debt[_account] > 0) {
-            s_debt[_account] -= newYieldProducedByCollateral;
-            s_totalDebt -= newYieldProducedByCollateral;
+            s_debt[protocol][_account][_token] -= _amount;
+            s_totalDebt[protocol] -= _amount;
         }
 
-        return s_debt[_account];
+        emit Advance_Repayment_Deposit(protocol, _account, _token, _amount, s_debt[protocol][_account][_token]);
+        return s_debt[protocol][_account][_token];
     }
 
-    function _trackAccountYeild(address _account) internal returns (uint256) {
-        uint256 valueOfShares = getShareValue(s_collateralShares[_account]);
-        uint256 valueOfCollateral = getCollateralAmount(_account);
+    function _getCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
+        uint256 newYieldProducedByCollateral = _trackAccountYeild(_protocol, _account, _token);
 
-        uint256 totalYield = valueOfShares - valueOfCollateral;
+        if (newYieldProducedByCollateral > 0 && s_debt[_protocol][_account][_token] > 0) {
+            s_debt[_protocol][_account][_token] -= newYieldProducedByCollateral;
+            s_totalDebt[_protocol] -= newYieldProducedByCollateral;
+        }
+
+        return s_debt[_protocol][_account][_token];
+    }
+
+    function _trackAccountYeild(address _protocol, address _account, address _token) internal returns (uint256) {
+        uint256 valueOfShares = getShareValue(_token, s_collateralShares[_protocol][_account][_token]);
+        uint256 valueOfCollateral = s_collateral[_protocol][_account][_token];
+        uint256 totalYield;
         uint256 newYield;
 
-        if (totalYield > s_accountYield[_account]) {
-            newYield = totalYield - s_accountYield[_account];
-            s_accountYield[_account] += newYield;
-            s_totalAccountYield += newYield;
+        if (valueOfShares > valueOfCollateral) {
+            totalYield = valueOfShares - valueOfCollateral;
         }
+
+        if (totalYield > s_accountYield[_protocol][_account][_token]) {
+            newYield = totalYield - s_accountYield[_protocol][_account][_token];
+            s_accountYield[_protocol][_account][_token] += newYield;
+            s_totalAccountYield[_protocol] += newYield;
+        }
+
         return newYield;
     }
 
@@ -148,62 +148,30 @@ contract YieldWield {
         uint256 baseFeePercentage = 10;
         uint256 scaledFeePercentage = _getPercentage(_advanceAmount, _collateral);
         uint256 totalFeePercentage = baseFeePercentage + scaledFeePercentage;
-        uint256 totalFee = _getPercentageAmount(_advanceAmount, totalFeePercentage);
-        return totalFee;
+        return _getPercentageAmount(_advanceAmount, totalFeePercentage);
     }
 
-    function _getCurrentLiquidityIndex() internal view returns (uint256) {
-        DataTypes.ReserveData memory reserve = i_pool.getReserveData(i_stablecoinAddress);
-        return uint256(reserve.liquidityIndex) / 1e21; // WAD (1e27)
+    function _getCurrentLiquidityIndex(address _token) internal view returns (uint256) {
+        DataTypes.ReserveData memory reserve = i_pool.getReserveData(_token);
+        return uint256(reserve.liquidityIndex) / 1e21;
     }
 
-    function _mintShares(uint256 _stablecoinAmount) private view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex();
-        if (currentLiquidityIndex < 1) {
-            revert INVALID_LIQUIDITY_INDEX();
-        }
-        uint256 sharesToMint = ((_stablecoinAmount * 1e27) / currentLiquidityIndex);
-        return sharesToMint;
+    function _mintShares(address _token, uint256 _amount) private view returns (uint256) {
+        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
+        if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
+        return (_amount * 1e27) / currentLiquidityIndex;
     }
 
-    function _redeemShares(uint256 _stablecoinAmount) private view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex();
-        if (currentLiquidityIndex < 1) {
-            revert INVALID_LIQUIDITY_INDEX();
-        }
-        uint256 sharesToBurn = ((_stablecoinAmount * 1e27) / currentLiquidityIndex);
-        return sharesToBurn;
+    function _redeemShares(address _token, uint256 _amount) private view returns (uint256) {
+        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
+        if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
+        return (_amount * 1e27) / currentLiquidityIndex;
     }
 
-    function _getYieldBarringTokensNeededForStablecoinAmount(uint256 _stablecoinAmount)
-        private
-        view
-        returns (uint256)
-    {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex();
-        if (currentLiquidityIndex < 1) {
-            revert INVALID_LIQUIDITY_INDEX();
-        }
-        uint256 numOfTokensNeeded = ((_stablecoinAmount * 1e27) / currentLiquidityIndex);
-        return numOfTokensNeeded;
-    }
-
-    function getAccountShareValue(address _account) public view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex();
-        if (currentLiquidityIndex < 1) {
-            revert INVALID_LIQUIDITY_INDEX();
-        }
-        uint256 shareValue = (s_collateralShares[_account] * currentLiquidityIndex + 1e27 - 1) / 1e27;
-        return shareValue;
-    }
-
-    function getShareValue(uint256 _shares) public view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex();
-        if (currentLiquidityIndex < 1) {
-            revert INVALID_LIQUIDITY_INDEX();
-        }
-        uint256 shareValue = (_shares * currentLiquidityIndex + 1e27 - 1) / 1e27;
-        return shareValue;
+    function getShareValue(address _token, uint256 _shares) public view returns (uint256) {
+        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
+        if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
+        return (_shares * currentLiquidityIndex + 1e27 - 1) / 1e27;
     }
 
     function _getPercentage(uint256 _partNumber, uint256 _wholeNumber) internal pure returns (uint256) {
@@ -214,31 +182,40 @@ contract YieldWield {
         return (_wholeNumber * _percent) / 100;
     }
 
-    function getCollateralShares(address _account) public view returns (uint256) {
-        return s_collateralShares[_account];
+    function getAndupdateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
+        address protocol = msg.sender;
+
+        uint256 newYieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
+
+        if (newYieldProducedByCollateral > 0 && s_debt[protocol][_account][_token] > 0) {
+            s_debt[protocol][_account][_token] -= newYieldProducedByCollateral;
+            s_totalDebt[protocol] -= newYieldProducedByCollateral;
+        }
+
+        return s_debt[protocol][_account][_token];
     }
 
-    function getAccountTotalYield(address _account) public view returns (uint256) {
-        return s_accountYield[_account];
+    function getCollateralShares(address _account, address _token) public view returns (uint256) {
+        return s_collateralShares[msg.sender][_account][_token];
     }
 
-    function getCollateralAmount(address _account) public view returns (uint256) {
-        return s_collateral[_account];
+    function getAccountTotalYield(address _account, address _token) public view returns (uint256) {
+        return s_accountYield[msg.sender][_account][_token];
     }
 
-    function getDebtAmount(address _account) public view returns (uint256) {
-        return s_debt[_account];
+    function getCollateralAmount(address _account, address _token) external view returns (uint256) {
+        return s_collateral[msg.sender][_account][_token];
     }
 
-    function getTotalRevenueShares() public view returns (uint256) {
-        return s_totalRevenueShares;
+    function getTotalRevenueShares() external view returns (uint256) {
+        return s_totalRevenueShares[msg.sender];
     }
 
-    function getTotalRevenueShareValue() public view returns (uint256) {
-        return getShareValue(s_totalRevenueShares);
+    function getTotalRevenueShareValue(address _token) external view returns (uint256) {
+        return getShareValue(_token, s_totalRevenueShares[msg.sender]);
     }
 
-    function getYieldWieldContractAddress() public view returns (address) {
-        return i_yieldWieldContractAddress;
+    function getYieldWieldContractAddress() external view returns (address) {
+        return address(this);
     }
 }

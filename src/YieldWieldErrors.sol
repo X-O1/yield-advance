@@ -6,3 +6,4 @@ pragma solidity ^0.8.30;
 // YieldWield.sol
 error INVALID_LIQUIDITY_INDEX();
 error REPAY_ADVANCE_TO_WITHDRAW();
+error NOT_AUTHORIZED();
