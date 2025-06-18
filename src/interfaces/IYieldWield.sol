@@ -22,7 +22,9 @@ interface IYieldWield {
         uint256 currentDebt
     );
 
-    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount) external;
+    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
+        external
+        returns (uint256);
 
     function withdrawCollateral(address _account, address _token) external;
 
