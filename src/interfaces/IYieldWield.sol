@@ -26,7 +26,7 @@ interface IYieldWield {
         external
         returns (uint256);
 
-    function withdrawCollateral(address _account, address _token) external;
+    function withdrawCollateral(address _account, address _token) external returns (uint256);
 
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256);
 

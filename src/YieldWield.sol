@@ -76,7 +76,7 @@ contract YieldWield {
         return advanceMinusFee;
     }
 
-    function withdrawCollateral(address _account, address _token) external {
+    function withdrawCollateral(address _account, address _token) external returns (uint256) {
         address protocol = msg.sender;
 
         uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
@@ -93,6 +93,8 @@ contract YieldWield {
         s_collateral[protocol][_account][_token] = 0;
 
         emit Withdraw_Collateral(protocol, _account, _token, accountCollateral);
+
+        return accountCollateral;
     }
 
     // MAKE AUTO WITHDRAW COLLATERAL WHEN DEBT HITS 0
