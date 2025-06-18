@@ -79,7 +79,7 @@ contract YieldWield {
     function withdrawCollateral(address _account, address _token) external {
         address protocol = msg.sender;
 
-        uint256 currentDebt = _getCurrentDebt(protocol, _account, _token);
+        uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
         if (currentDebt > 0) revert REPAY_ADVANCE_TO_WITHDRAW();
 
         uint256 accountCollateral = s_collateral[protocol][_account][_token];
@@ -100,7 +100,7 @@ contract YieldWield {
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         address protocol = msg.sender;
 
-        uint256 currentDebt = _getCurrentDebt(protocol, _account, _token);
+        uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
         if (currentDebt > 0 && _amount <= currentDebt) {
             s_debt[protocol][_account][_token] -= _amount;
             s_totalDebt[protocol][_token] -= _amount;
@@ -125,7 +125,7 @@ contract YieldWield {
         return yieldTokensNeededToTransfer;
     }
 
-    function _getCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
+    function _getAccountCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
         uint256 newYieldProducedByCollateral = _trackAccountYeild(_protocol, _account, _token);
 
         if (newYieldProducedByCollateral > 0 && s_debt[_protocol][_account][_token] > 0) {
@@ -153,6 +153,19 @@ contract YieldWield {
         }
 
         return newYield;
+    }
+
+    function getAndupdateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
+        address protocol = msg.sender;
+
+        uint256 newYieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
+
+        if (newYieldProducedByCollateral > 0 && s_debt[protocol][_account][_token] > 0) {
+            s_debt[protocol][_account][_token] -= newYieldProducedByCollateral;
+            s_totalDebt[protocol][_token] -= newYieldProducedByCollateral;
+        }
+
+        return s_debt[protocol][_account][_token];
     }
 
     function _getAdvanceFee(uint256 _collateral, uint256 _advanceAmount) internal pure returns (uint256) {
@@ -193,19 +206,6 @@ contract YieldWield {
         return (_wholeNumber * _percent) / 100;
     }
 
-    function getAndupdateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
-        address protocol = msg.sender;
-
-        uint256 newYieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
-
-        if (newYieldProducedByCollateral > 0 && s_debt[protocol][_account][_token] > 0) {
-            s_debt[protocol][_account][_token] -= newYieldProducedByCollateral;
-            s_totalDebt[protocol][_token] -= newYieldProducedByCollateral;
-        }
-
-        return s_debt[protocol][_account][_token];
-    }
-
     function getCollateralShares(address _account, address _token) public view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token];
     }
@@ -216,6 +216,10 @@ contract YieldWield {
 
     function getCollateralAmount(address _account, address _token) external view returns (uint256) {
         return s_collateral[msg.sender][_account][_token];
+    }
+
+    function getTotalDebt(address _token) external view returns (uint256) {
+        return s_totalDebt[msg.sender][_token];
     }
 
     function getTotalRevenueShares(address _token) external view returns (uint256) {
