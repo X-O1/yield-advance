@@ -13,9 +13,7 @@ import {IPool} from "@aave-v3-core/interfaces/IPool.sol";
 contract YieldAdaptertTest is Test {
     YieldWield yieldWield;
 
-    function setUp() external {
-        yieldWield = new YieldWield();
-    }
+    function setUp() external {}
 
     function test() public {}
 }
