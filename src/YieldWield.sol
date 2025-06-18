@@ -52,7 +52,10 @@ contract YieldWield {
         i_pool = IPool(i_addressesProvider.getPool());
     }
 
-    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount) external {
+    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
+        external
+        returns (uint256 _advanceMinusFee)
+    {
         address protocol = msg.sender;
 
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
@@ -69,15 +72,8 @@ contract YieldWield {
         s_totalDebt[protocol][_token] += advanceMinusFee;
         s_totalRevenueShares[protocol][_token] += advanceFee;
 
-        // SAYV NEEDS
-        // add FEE to rev shares
-        // make transfers
-        // update balances. collateral minus advance and fee should be subtracted from shares
-        // so they cant withdraw it.
-        // or just on any withdrawl check yield wield contract debt.
-        // all debt must be paid on yieldwield to withdraw collateral
-
         emit Advance_Taken(protocol, _account, _token, _collateral, advancePlusFee);
+        return advanceMinusFee;
     }
 
     function withdrawCollateral(address _account, address _token) external {
@@ -95,11 +91,6 @@ contract YieldWield {
         s_totalCollateralShares[protocol][_token] -= accountShares;
         s_collateralShares[protocol][_account][_token] = 0;
         s_collateral[protocol][_account][_token] = 0;
-
-        // SAYV NEEDS
-        // make transfers
-        // update balances. collateral should be re-added to shares
-        // all debt must be paid on yieldwield to withdraw collateral
 
         emit Withdraw_Collateral(protocol, _account, _token, accountCollateral);
     }
