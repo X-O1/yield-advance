@@ -47,6 +47,18 @@ Make sure your `remappings.txt` includes the correct alias if needed:
 
 ---
 
+## 📡 Use the Interface
+
+Your protocol doesn't need to interact with the full `YieldWield` contract directly. For cleaner integration, import and use the provided interface:
+
+```solidity
+import "@YieldWield/src/interfaces/IYieldWield.sol";
+```
+
+This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.
+
+---
+
 ## 🚀 Integration Overview
 
 ### 1. You Custody the Funds
@@ -139,8 +151,6 @@ Where `addressesProvider` is Aave v3's PoolAddressesProvider (e.g. for mainnet).
 
 ## ✉️ Need Help?
 
-Open an issue or contact the original developer: 
-Email: yieldwield@protonmail.com
-X (formally Twitter): https://x.com/YieldWield_com
-
-
+Open an issue or contact the original developer:
+Email: [yieldwield@protonmail.com](mailto:yieldwield@protonmail.com)
+X (formally Twitter): [https://x.com/YieldWield\_com](https://x.com/YieldWield_com)

@@ -844,6 +844,12 @@ hue-6-2: #e6c07b
 <pre><code>@YieldWield/=lib/YieldWield/
 </code></pre>
 <hr>
+<h2 id="-use-the-interface">📡 Use the Interface</h2>
+<p>Your protocol doesn't need to interact with the full <code>YieldWield</code> contract directly. For cleaner integration, import and use the provided interface:</p>
+<pre><code class="language-solidity">import &quot;@YieldWield/src/interfaces/IYieldWield.sol&quot;;
+</code></pre>
+<p>This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.</p>
+<hr>
 <h2 id="-integration-overview">🚀 Integration Overview</h2>
 <h3 id="1-you-custody-the-funds">1. You Custody the Funds</h3>
 <p>You own the funds. YieldWield never transfers tokens. All transfers (deposits, withdrawals, repayments) must happen in your protocol.</p>
