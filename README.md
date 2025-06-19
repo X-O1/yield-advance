@@ -1,4 +1,4 @@
-# YieldWield
+# YieldWield v1
 
 A yield re-routing plug-in that enables protocols to offer **yield-backed advances** to their users by leveraging idle stablecoin yield. YieldWield handles share logic, debt tracking, and yield accrual, while **your protocol handles all token transfers and fund custody**.
 
@@ -146,6 +146,12 @@ new YieldWield(addressesProvider);
 ```
 
 Where `addressesProvider` is Aave v3's PoolAddressesProvider (e.g. for mainnet).
+
+---
+
+## 🔮 Coming in V2: YieldWield Marketplace
+
+V2 will evolve YieldWield into a full marketplace for DeFi power users to fund advances, set custom terms, and earn above-market yield by backing future yield claims.
 
 ---
 
