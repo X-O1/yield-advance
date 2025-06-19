@@ -40,6 +40,8 @@ interface IYieldWield {
 
     function getCollateralAmount(address _account, address _token) external view returns (uint256);
 
+    function getDebt(address _protocol, address _account, address _token) external view returns (uint256);
+
     function getTotalDebt(address _token) external view returns (uint256);
 
     function getTotalRevenueShares() external view returns (uint256);
