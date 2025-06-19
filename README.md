@@ -149,9 +149,9 @@ Where `addressesProvider` is Aave v3's PoolAddressesProvider (e.g. for mainnet).
 
 ---
 
-## 🔮 Coming in V2: YieldWield Marketplace
+## 🔮 Coming in V2 - YieldWield Marketplace: A Peer-to-Peer Marketplace for Time-Shifted Yield
 
-V2 will evolve YieldWield into a full marketplace for DeFi power users to fund advances, set custom terms, and earn above-market yield by backing future yield claims.
+YieldWield v2 will evolve into a full peer-to-peer marketplace — where users can request advances with custom terms, and DeFi power users choose which ones to fund in exchange for above-market yield.
 
 ---
 
