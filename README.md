@@ -24,27 +24,25 @@ All logic, no custody.
 To install YieldWield into your Foundry project:
 
 ```bash
-forge install yourusername/YieldWield
+forge install X-O1/yieldwield
 ```
-
-> Replace `yourusername/YieldWield` with the actual GitHub path once the repo is live.
 
 If you’re using scoped packages or need to prevent an auto-commit:
 
 ```bash
-forge install yourusername/YieldWield --no-commit
+forge install X-O1/yieldwield --no-commit
 ```
 
 Once installed, import the contract in your code like this:
 
 ```solidity
-import "YieldWield/src/YieldWield.sol";
+import "@YieldWield/src/YieldWield.sol";
 ```
 
 Make sure your `remappings.txt` includes the correct alias if needed:
 
 ```
-YieldWield/=lib/YieldWield/
+@YieldWield/=lib/YieldWield/
 ```
 
 ---

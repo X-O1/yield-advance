@@ -832,19 +832,16 @@ hue-6-2: #e6c07b
 <hr>
 <h2 id="️-installation-forge">🛠️ Installation (Forge)</h2>
 <p>To install YieldWield into your Foundry project:</p>
-<pre><code class="language-bash">forge install yourusername/YieldWield
+<pre><code class="language-bash">forge install X-O1/yieldwield
 </code></pre>
-<blockquote>
-<p>Replace <code>yourusername/YieldWield</code> with the actual GitHub path once the repo is live.</p>
-</blockquote>
 <p>If you’re using scoped packages or need to prevent an auto-commit:</p>
-<pre><code class="language-bash">forge install yourusername/YieldWield --no-commit
+<pre><code class="language-bash">forge install X-O1/yieldwield --no-commit
 </code></pre>
 <p>Once installed, import the contract in your code like this:</p>
-<pre><code class="language-solidity">import &quot;YieldWield/src/YieldWield.sol&quot;;
+<pre><code class="language-solidity">import &quot;@YieldWield/src/YieldWield.sol&quot;;
 </code></pre>
 <p>Make sure your <code>remappings.txt</code> includes the correct alias if needed:</p>
-<pre><code>YieldWield/=lib/YieldWield/
+<pre><code>@YieldWield/=lib/YieldWield/
 </code></pre>
 <hr>
 <h2 id="-integration-overview">🚀 Integration Overview</h2>
