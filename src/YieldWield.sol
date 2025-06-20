@@ -12,43 +12,37 @@ import {DataTypes} from "@aave-v3-core/protocol/libraries/types/DataTypes.sol";
 import {IPoolAddressesProvider} from "@aave-v3-core/interfaces/IPoolAddressesProvider.sol";
 
 contract YieldWield {
-    /// @notice Aave pool instance used to retrieve liquidity index
+    // Aave pool instance used to retrieve liquidity index
     IPool private immutable i_pool;
 
-    /// @notice Aave addresses provider
+    // Aave addresses provider
     IPoolAddressesProvider public immutable i_addressesProvider;
 
-    /// @notice User shares that represent the percentage ownership of all current collateral per token across a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 shares))) public
-        s_collateralShares;
-
-    /// @notice Total shares per token across a protocol
+    // User shares that represent the percentage ownership of all current collateral per token across a protocol
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 shares)))
+        public s_collateralShares;
     mapping(address protocol => mapping(address token => uint256 totalShares)) public s_totalCollateralShares;
 
-    /// @notice Raw advance collateral amount for a user in a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
-        s_collateral;
-
-    /// @notice Total collateral across a protocol for a given token
+    // Raw advance collateral amount for a user in a protocol
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
+        public s_collateral;
     mapping(address protocol => mapping(address token => uint256 totalCollateral)) public s_totalCollateral;
 
-    /// @notice Debt owed by an account that has taken an advance on its yield within a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public s_debt;
-
-    /// @notice Total protocol debt for all yield advances for a token
+    // Debt owed by an account that has taken an advance on its yield within a protocol
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
+        public s_debt;
     mapping(address protocol => mapping(address token => uint256 totalDebt)) public s_totalDebt;
 
-    /// @notice Tracked yield earned for a user's collateral
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
-        s_accountYield;
+    // Tracked yield earned for a user's collateral
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
+        public s_accountYield;
+    mapping(address protocol => mapping(address token => uint256 totalAccountYield))
+        public s_totalAccountYield;
 
-    /// @notice Total tracked yield earned by all users collateral for a token
-    mapping(address protocol => mapping(address token => uint256 totalAccountYield)) public s_totalAccountYield;
-
-    /// @notice Total shares that are considered revenue (advance fees collected) for the protocol
+    // Total shares that are considered revenue (advance fees collected) for the protocol
     mapping(address protocol => mapping(address token => uint256)) public s_totalRevenueShares;
 
-    /// @notice Emitted when a user takes an advance against future yield
+    // Emitted when a user takes an advance against future yield
     event Advance_Taken(
         address indexed protocol,
         address indexed account,
@@ -57,12 +51,15 @@ contract YieldWield {
         uint256 advancePlusFee
     );
 
-    /// @notice Emitted when collateral is withdrawn (after debt repayment)
+    // Emitted when collateral is withdrawn (after debt repayment)
     event Withdraw_Collateral(
-        address indexed protocol, address indexed account, address indexed token, uint256 collateralWithdrawn
+        address indexed protocol,
+        address indexed account,
+        address indexed token,
+        uint256 collateralWithdrawn
     );
 
-    /// @notice Emitted when a user repays advance debt by depositing
+    // Emitted when a user repays advance debt by depositing
     event Advance_Repayment_Deposit(
         address indexed protocol,
         address indexed account,
@@ -71,7 +68,7 @@ contract YieldWield {
         uint256 currentDebt
     );
 
-    /// @notice Emitted when protocol claims its revenue (fees)
+    // Emitted when protocol claims its revenue (fees)
     event Revenue_Claimed(address indexed protocol, uint256 revAmount);
 
     /**
@@ -91,10 +88,12 @@ contract YieldWield {
      * @param _advanceAmount Requested advance (pre-fee)
      * @return _advanceMinusFee Actual amount user receives after fees
      */
-    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
-        external
-        returns (uint256 _advanceMinusFee)
-    {
+    function getAdvance(
+        address _account,
+        address _token,
+        uint256 _collateral,
+        uint256 _advanceAmount
+    ) external returns (uint256 _advanceMinusFee) {
         address protocol = msg.sender;
 
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
@@ -147,7 +146,11 @@ contract YieldWield {
      * @param _amount Amount deposited to reduce debt
      * @return Remaining debt after repayment
      */
-    function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
+    function repayAdvanceWithDeposit(
+        address _account,
+        address _token,
+        uint256 _amount
+    ) external returns (uint256) {
         address protocol = msg.sender;
 
         uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
@@ -156,7 +159,13 @@ contract YieldWield {
             s_totalDebt[protocol][_token] -= _amount;
         }
 
-        emit Advance_Repayment_Deposit(protocol, _account, _token, _amount, s_debt[protocol][_account][_token]);
+        emit Advance_Repayment_Deposit(
+            protocol,
+            _account,
+            _token,
+            _amount,
+            s_debt[protocol][_account][_token]
+        );
         return s_debt[protocol][_account][_token];
     }
 
@@ -199,10 +208,12 @@ contract YieldWield {
         return s_debt[protocol][_account][_token];
     }
 
-    /**
-     * @dev Internal helper that checks for new yield, updates state, and applies yield to reduce debt.
-     */
-    function _getAccountCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
+    // Helper that checks for new yield, updates state, and applies yield to reduce debt.
+    function _getAccountCurrentDebt(
+        address _protocol,
+        address _account,
+        address _token
+    ) internal returns (uint256) {
         uint256 newYieldProducedByCollateral = _trackAccountYeild(_protocol, _account, _token);
 
         if (newYieldProducedByCollateral > 0 && s_debt[_protocol][_account][_token] > 0) {
@@ -213,10 +224,12 @@ contract YieldWield {
         return s_debt[_protocol][_account][_token];
     }
 
-    /**
-     * @dev Tracks yield from collateral shares and updates user's yield history.
-     */
-    function _trackAccountYeild(address _protocol, address _account, address _token) internal returns (uint256) {
+    // Tracks yield from collateral shares and updates user's yield history.
+    function _trackAccountYeild(
+        address _protocol,
+        address _account,
+        address _token
+    ) internal returns (uint256) {
         uint256 valueOfShares = getShareValue(_token, s_collateralShares[_protocol][_account][_token]);
         uint256 valueOfCollateral = s_collateral[_protocol][_account][_token];
         uint256 totalYield;
@@ -235,9 +248,7 @@ contract YieldWield {
         return newYield;
     }
 
-    /**
-     * @dev Calculates advance fee based on collateral ratio and base percentage.
-     */
+    // Calculates advance fee based on collateral ratio and base percentage.
     function _getAdvanceFee(uint256 _collateral, uint256 _advanceAmount) internal pure returns (uint256) {
         uint256 baseFeePercentage = 10;
         uint256 scaledFeePercentage = _getPercentage(_advanceAmount, _collateral);
@@ -245,95 +256,72 @@ contract YieldWield {
         return _getPercentageAmount(_advanceAmount, totalFeePercentage);
     }
 
-    /**
-     * @dev Gets the Aave liquidity index (scaled down to 1e6).
-     */
+    // Gets the Aave liquidity index (scaled down to 1e6).
     function _getCurrentLiquidityIndex(address _token) internal view returns (uint256) {
         DataTypes.ReserveData memory reserve = i_pool.getReserveData(_token);
         return uint256(reserve.liquidityIndex) / 1e21;
     }
 
-    /**
-     * @dev Converts token amount into shares using Aave liquidity index.
-     */
+    // Converts token amount into shares using Aave liquidity index.
     function _shareConverter(address _token, uint256 _amount) private view returns (uint256) {
         uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
         if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
         return (_amount * 1e27) / currentLiquidityIndex;
     }
 
-    /**
-     * @notice Gets the token value for a given number of shares.
-     */
+    // Gets the token value for a given number of shares.
     function getShareValue(address _token, uint256 _shares) public view returns (uint256) {
         uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
         if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
         return (_shares * currentLiquidityIndex + 1e27 - 1) / 1e27;
     }
 
-    /**
-     * @dev Returns percentage of a part relative to a whole (0-100).
-     */
+    // Returns percentage of a part relative to a whole (0-100).
     function _getPercentage(uint256 _partNumber, uint256 _wholeNumber) internal pure returns (uint256) {
         return (_partNumber * 100) / _wholeNumber;
     }
 
-    /**
-     * @dev Returns the amount that represents a percentage of a whole.
-     */
+    // Returns the amount that represents a percentage of a whole.
     function _getPercentageAmount(uint256 _wholeNumber, uint256 _percent) internal pure returns (uint256) {
         return (_wholeNumber * _percent) / 100;
     }
 
-    /**
-     * @notice Gets user's collateral shares for a token.
-     */
+    // Gets user's collateral shares for a token.
     function getCollateralShares(address _account, address _token) public view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token];
     }
 
-    /**
-     * @notice Returns total yield accrued for a user's collateral.
-     */
+    // Returns total yield accrued for a user's collateral.
     function getAccountTotalYield(address _account, address _token) public view returns (uint256) {
         return s_accountYield[msg.sender][_account][_token];
     }
 
-    /**
-     * @notice Gets raw collateral (token amount) for a user.
-     */
+    // Gets raw collateral (token amount) for a user.
     function getCollateralAmount(address _account, address _token) external view returns (uint256) {
         return s_collateral[msg.sender][_account][_token];
     }
 
-    /**
-     * @notice Gets total outstanding debt for a token across all users.
-     */
+    // Gets total outstanding debt for a token across all users.
     function getTotalDebt(address _token) external view returns (uint256) {
         return s_totalDebt[msg.sender][_token];
     }
 
-    /**
-     * @notice Gets total revenue shares accrued to the protocol.
-     */
+    // Gets total revenue shares accrued to the protocol.
     function getTotalRevenueShares(address _token) external view returns (uint256) {
         return s_totalRevenueShares[msg.sender][_token];
     }
 
-    /**
-     * @notice Gets token value of all protocol revenue shares.
-     */
+    // Gets token value of all protocol revenue shares.
     function getTotalRevenueShareValue(address _token) external view returns (uint256) {
         return getShareValue(_token, s_totalRevenueShares[msg.sender][_token]);
     }
 
-    /**
-     * @notice Returns the address of this contract.
-     */
+    // Returns the address of this contract.
     function getYieldWieldContractAddress() external view returns (address) {
         return address(this);
     }
 
+    // Returns accounts total debt
     function getDebt(address _account, address _token) external view returns (uint256) {
         return s_debt[msg.sender][_account][_token];
     }
