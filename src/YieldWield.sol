@@ -19,25 +19,23 @@ contract YieldWield {
     IPoolAddressesProvider public immutable i_addressesProvider;
 
     // User shares that represent the percentage ownership of all current collateral per token across a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 shares)))
-        public s_collateralShares;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 shares))) public
+        s_collateralShares;
     mapping(address protocol => mapping(address token => uint256 totalShares)) public s_totalCollateralShares;
 
     // Raw advance collateral amount for a user in a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
-        public s_collateral;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
+        s_collateral;
     mapping(address protocol => mapping(address token => uint256 totalCollateral)) public s_totalCollateral;
 
     // Debt owed by an account that has taken an advance on its yield within a protocol
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
-        public s_debt;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public s_debt;
     mapping(address protocol => mapping(address token => uint256 totalDebt)) public s_totalDebt;
 
     // Tracked yield earned for a user's collateral
-    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount)))
-        public s_accountYield;
-    mapping(address protocol => mapping(address token => uint256 totalAccountYield))
-        public s_totalAccountYield;
+    mapping(address protocol => mapping(address account => mapping(address token => uint256 amount))) public
+        s_accountYield;
+    mapping(address protocol => mapping(address token => uint256 totalAccountYield)) public s_totalAccountYield;
 
     // Total shares that are considered revenue (advance fees collected) for the protocol
     mapping(address protocol => mapping(address token => uint256)) public s_totalRevenueShares;
@@ -53,10 +51,7 @@ contract YieldWield {
 
     // Emitted when collateral is withdrawn (after debt repayment)
     event Withdraw_Collateral(
-        address indexed protocol,
-        address indexed account,
-        address indexed token,
-        uint256 collateralWithdrawn
+        address indexed protocol, address indexed account, address indexed token, uint256 collateralWithdrawn
     );
 
     // Emitted when a user repays advance debt by depositing
@@ -88,12 +83,10 @@ contract YieldWield {
      * @param _advanceAmount Requested advance (pre-fee)
      * @return _advanceMinusFee Actual amount user receives after fees
      */
-    function getAdvance(
-        address _account,
-        address _token,
-        uint256 _collateral,
-        uint256 _advanceAmount
-    ) external returns (uint256 _advanceMinusFee) {
+    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
+        external
+        returns (uint256 _advanceMinusFee)
+    {
         address protocol = msg.sender;
 
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
@@ -146,11 +139,7 @@ contract YieldWield {
      * @param _amount Amount deposited to reduce debt
      * @return Remaining debt after repayment
      */
-    function repayAdvanceWithDeposit(
-        address _account,
-        address _token,
-        uint256 _amount
-    ) external returns (uint256) {
+    function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         address protocol = msg.sender;
 
         uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
@@ -159,13 +148,7 @@ contract YieldWield {
             s_totalDebt[protocol][_token] -= _amount;
         }
 
-        emit Advance_Repayment_Deposit(
-            protocol,
-            _account,
-            _token,
-            _amount,
-            s_debt[protocol][_account][_token]
-        );
+        emit Advance_Repayment_Deposit(protocol, _account, _token, _amount, s_debt[protocol][_account][_token]);
         return s_debt[protocol][_account][_token];
     }
 
@@ -209,11 +192,7 @@ contract YieldWield {
     }
 
     // Helper that checks for new yield, updates state, and applies yield to reduce debt.
-    function _getAccountCurrentDebt(
-        address _protocol,
-        address _account,
-        address _token
-    ) internal returns (uint256) {
+    function _getAccountCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
         uint256 newYieldProducedByCollateral = _trackAccountYeild(_protocol, _account, _token);
 
         if (newYieldProducedByCollateral > 0 && s_debt[_protocol][_account][_token] > 0) {
@@ -225,11 +204,7 @@ contract YieldWield {
     }
 
     // Tracks yield from collateral shares and updates user's yield history.
-    function _trackAccountYeild(
-        address _protocol,
-        address _account,
-        address _token
-    ) internal returns (uint256) {
+    function _trackAccountYeild(address _protocol, address _account, address _token) internal returns (uint256) {
         uint256 valueOfShares = getShareValue(_token, s_collateralShares[_protocol][_account][_token]);
         uint256 valueOfCollateral = s_collateral[_protocol][_account][_token];
         uint256 totalYield;
