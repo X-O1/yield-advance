@@ -24,13 +24,13 @@ All logic, no custody.
 To install YieldWield into your Foundry project:
 
 ```bash
-forge install X-O1/yieldwield
+forge install smartcontractengineer/yieldwield
 ```
 
 If you’re using scoped packages or need to prevent an auto-commit:
 
 ```bash
-forge install X-O1/yieldwield --no-commit
+forge install smartcontractengineer/yieldwield --no-commit
 ```
 
 Once installed, import the contract in your code like this:
