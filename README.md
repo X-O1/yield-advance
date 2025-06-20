@@ -4,7 +4,7 @@ A yield re-routing plug-in that enables protocols to offer **yield-backed advanc
 
 ---
 
-## ✨ What It Does
+## What It Does
 
 YieldWield plugs into your protocol to:
 
@@ -19,7 +19,7 @@ All logic, no custody.
 
 ---
 
-## 🛠️ Installation (Forge)
+## Installation (Forge)
 
 To install YieldWield into your Foundry project:
 
@@ -47,7 +47,7 @@ Make sure your `remappings.txt` includes the correct alias if needed:
 
 ---
 
-## 📡 Use the Interface
+## Use the Interface
 
 Your protocol doesn't need to interact with the full `YieldWield` contract directly. For cleaner integration, import and use the provided interface:
 
@@ -59,7 +59,7 @@ This gives you access to the external functions your protocol needs, with no nee
 
 ---
 
-## 🚀 Integration Overview
+## Integration Overview
 
 ### 1. You Custody the Funds
 
@@ -86,7 +86,7 @@ Once their debt is zero, they can withdraw via `withdrawCollateral()`.
 
 ---
 
-## 📊 State Model
+## State Model
 
 All tracked by protocol > user > token:
 
@@ -97,7 +97,7 @@ All tracked by protocol > user > token:
 
 ---
 
-## ⚖️ Example Advance Flow
+## Example Advance Flow
 
 ```solidity
 IERC20(aToken).transferFrom(user, protocol, amount);
@@ -105,13 +105,13 @@ uint256 netAdvance = yieldWield.getAdvance(user, aToken, collateralAmount, reque
 // You now send netAdvance to the user from your treasury
 ```
 
-## ⚖️ Example Yield Repayment Flow
+## Example Yield Repayment Flow
 
 ```solidity
 uint256 newDebt = yieldWield.getAndupdateAccountDebtFromYield(user, aToken);
 ```
 
-## ⚖️ Example Repayment via Deposit
+## Example Repayment via Deposit
 
 ```solidity
 IERC20(aToken).transferFrom(user, protocol, amount);
@@ -120,7 +120,7 @@ yieldWield.repayAdvanceWithDeposit(user, aToken, amount);
 
 ---
 
-## 🚫 What It Does *Not* Do
+## What It Does *Not* Do
 
 * YieldWield **does not store** tokens
 * YieldWield **does not handle** actual transfers
@@ -130,7 +130,7 @@ That’s all on your end.
 
 ---
 
-## 🌟 Recommended Usage
+## Recommended Usage
 
 * Use with yield-bearing stablecoins like aUSDC or aDAI
 * Limit advance amounts to prevent undercollateralization
@@ -139,7 +139,7 @@ That’s all on your end.
 
 ---
 
-## ⚙️ Contract Deployment
+## Contract Deployment
 
 ```solidity
 new YieldWield(addressesProvider);
@@ -149,13 +149,13 @@ Where `addressesProvider` is Aave v3's PoolAddressesProvider (e.g. for mainnet).
 
 ---
 
-## 🔮 Coming in V2 - YieldWield Marketplace: A Peer-to-Peer Marketplace for Time-Shifted Yield
+## Coming in V2 - YieldWield Marketplace: A Peer-to-Peer Marketplace for Time-Shifted Yield
 
 YieldWield v2 will evolve into a full peer-to-peer marketplace — where users can request advances with custom terms, and DeFi power users choose which ones to fund in exchange for above-market yield.
 
 ---
 
-## ✉️ Need Help?
+## Need Help?
 
 Open an issue or contact the original developer:
 Email: [yieldwield@protonmail.com](mailto:yieldwield@protonmail.com)
