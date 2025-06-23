@@ -30,15 +30,12 @@ contract YieldWieldMainnetTest is Test {
         usdc.mint(user, 1000);
         usdc.mint(user2, 1000);
         usdcAddress = usdc.getAddress();
-
         aUSDC = new MockAUSDC();
         aUSDCAddress = aUSDC.getAddress();
-
         mockPool = new MockPool(usdcAddress, aUSDCAddress);
         addressProvider = mockPool.getPool();
         yieldWield = new YieldWield(addressProvider);
         yieldWieldAddress = yieldWield.getYieldWieldContractAddress();
-
         vm.prank(protocol);
         usdc.approve(addressProvider, type(uint256).max);
     }
@@ -70,54 +67,40 @@ contract YieldWieldMainnetTest is Test {
         yieldWield.getAdvance(user, usdcAddress, 1000, 100);
         vm.prank(protocol);
         assertEq(yieldWield.getDebt(user, usdcAddress), 100);
-
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 2e27);
-
         vm.prank(protocol);
         yieldWield.updateAccountDebtFromYield(user, usdcAddress);
-
         vm.prank(protocol);
         assertEq(yieldWield.getDebt(user, usdcAddress), 0);
         vm.prank(protocol);
-        assertEq(yieldWield.getAccountTotalYield(user, usdcAddress), 900);
-
+        assertEq(yieldWield.getAccountTotalYield(user, usdcAddress), 1000);
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 1e27);
-
         vm.prank(protocol);
         yieldWield.getAdvance(user2, usdcAddress, 1000, 100);
         vm.prank(protocol);
         assertEq(yieldWield.getDebt(user2, usdcAddress), 100);
-
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 105e25);
-
         vm.prank(protocol);
         yieldWield.updateAccountDebtFromYield(user2, usdcAddress);
-
         vm.prank(protocol);
         assertEq(yieldWield.getDebt(user2, usdcAddress), 50);
         vm.prank(protocol);
-        assertEq(yieldWield.getAccountTotalYield(user2, usdcAddress), 0);
+        assertEq(yieldWield.getAccountTotalYield(user2, usdcAddress), 50);
     }
-
-    //NEXT
 
     function testWithdrawingCollateralAccounting() public {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 100);
-
         vm.prank(protocol);
         vm.expectRevert();
         yieldWield.withdrawCollateral(user, usdcAddress);
-
         vm.prank(protocol);
         yieldWield.repayAdvanceWithDeposit(user, usdcAddress, 100);
-
         vm.prank(protocol);
         yieldWield.withdrawCollateral(user, usdcAddress);
-
         vm.prank(protocol);
         assertEq(yieldWield.getCollateralShares(user, usdcAddress), 0);
         vm.prank(protocol);
@@ -129,7 +112,6 @@ contract YieldWieldMainnetTest is Test {
         assertEq(yieldWield.getAdvance(user, usdcAddress, 1000, 100), 80);
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 20);
-
         vm.prank(protocol);
         yieldWield.claimRevenue(usdcAddress);
         vm.prank(protocol);
@@ -138,53 +120,39 @@ contract YieldWieldMainnetTest is Test {
 
     function testGetCollateralShares() public {
         vm.prank(protocol);
+        mockPool.setLiquidityIndex(address(usdc), 102e25);
+        vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 100);
         vm.prank(protocol);
-        uint256 shares = yieldWield.getCollateralShares(user, usdcAddress);
-        assertGt(shares, 0);
+        assertEq(yieldWield.getCollateralShares(user, usdcAddress), 980);
     }
 
     function testGetAccountTotalYield() public {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 100);
-
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 2e27);
-        console.logUint(yieldWield.getAccountTotalYield(user, usdcAddress));
-
         vm.prank(protocol);
-        yieldWield.updateAccountDebtFromYield(user, usdcAddress);
-
+        assertEq(yieldWield.updateAccountDebtFromYield(user, usdcAddress), 0);
         vm.prank(protocol);
-        yieldWield.getAccountTotalYield(user, usdcAddress);
+        assertEq(yieldWield.getAccountTotalYield(user, usdcAddress), 1000);
     }
 
     function testGetTotalDebt() public {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 200);
         vm.prank(protocol);
-        uint256 totalDebt = yieldWield.getTotalDebt(usdcAddress);
-        assertEq(totalDebt, 200);
+        assertEq(yieldWield.getTotalDebt(usdcAddress), 200);
     }
 
     function testGetTotalRevenueShares() public {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 200);
         vm.prank(protocol);
-        uint256 totalRevShares = yieldWield.getTotalRevenueShares(usdcAddress);
-        assertGt(totalRevShares, 0);
+        assertEq(yieldWield.getTotalRevenueShares(usdcAddress), 60);
     }
 
     function testGetYieldWieldContractAddress() public view {
-        address addr = yieldWield.getYieldWieldContractAddress();
-        assertEq(addr, address(yieldWield));
-    }
-
-    function testGetDebt() public {
-        vm.prank(protocol);
-        yieldWield.getAdvance(user, usdcAddress, 1000, 200);
-        vm.prank(protocol);
-        uint256 debt = yieldWield.getDebt(user, usdcAddress);
-        assertEq(debt, 200);
+        assertEq(yieldWield.getYieldWieldContractAddress(), address(yieldWield));
     }
 }

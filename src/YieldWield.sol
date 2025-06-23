@@ -14,8 +14,8 @@ import {WadRayMath} from "@aave-v3-core/protocol/libraries/math/WadRayMath.sol";
 
 contract YieldWield {
     using WadRayMath for uint256;
-    // Aave pool instance used to retrieve liquidity index
 
+    // Aave pool instance used to retrieve liquidity index
     IPool private immutable i_pool;
 
     // Aave addresses provider
@@ -121,7 +121,7 @@ contract YieldWield {
     function withdrawCollateral(address _account, address _token) external returns (uint256) {
         address protocol = msg.sender;
 
-        uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
+        uint256 currentDebt = updateAccountDebtFromYield(_account, _token);
         if (currentDebt > 0) revert REPAY_ADVANCE_TO_WITHDRAW();
 
         uint256 accountCollateral = s_collateral[protocol][_account][_token];
@@ -132,7 +132,6 @@ contract YieldWield {
         s_collateral[protocol][_account][_token] = 0;
 
         emit Withdraw_Collateral(protocol, _account, _token, accountCollateral);
-
         return accountCollateral;
     }
 
@@ -146,7 +145,7 @@ contract YieldWield {
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         address protocol = msg.sender;
 
-        uint256 currentDebt = _getAccountCurrentDebt(protocol, _account, _token);
+        uint256 currentDebt = updateAccountDebtFromYield(_account, _token);
         if (currentDebt > 0 && _amount <= currentDebt) {
             s_debt[protocol][_account][_token] -= _amount;
             s_totalDebt[protocol][_token] -= _amount;
@@ -166,9 +165,6 @@ contract YieldWield {
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
         if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
 
-        // uint256 revSharesValue = getShareValue(_token, numOfRevenueShares);
-        // uint256 yieldTokensNeededToTransfer = _convertAmountToShares(_token, revSharesValue);
-
         s_totalRevenueShares[protocol][_token] = 0;
 
         emit Revenue_Claimed(protocol, numOfRevenueShares);
@@ -180,38 +176,27 @@ contract YieldWield {
      * @param _account Account whose debt should be updated
      * @param _token Token to evaluate
      */
-    function updateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
+    function updateAccountDebtFromYield(address _account, address _token) public returns (uint256) {
         address protocol = msg.sender;
         uint256 yieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
         uint256 accountDebt = s_debt[protocol][_account][_token];
 
-        if (accountDebt == 0) revert NO_DEBT();
-
-        if (yieldProducedByCollateral >= accountDebt) {
-            s_debt[protocol][_account][_token] = 0;
-            s_totalDebt[protocol][_token] -= accountDebt;
-            s_accountYield[protocol][_account][_token] -= accountDebt;
-            s_totalAccountYield[protocol][_token] -= accountDebt;
-        } else if (yieldProducedByCollateral < accountDebt) {
-            s_debt[protocol][_account][_token] -= yieldProducedByCollateral;
-            s_totalDebt[protocol][_token] -= yieldProducedByCollateral;
-            s_accountYield[protocol][_account][_token] -= yieldProducedByCollateral;
-            s_totalAccountYield[protocol][_token] -= yieldProducedByCollateral;
+        if (accountDebt > 0) {
+            if (yieldProducedByCollateral >= accountDebt) {
+                s_debt[protocol][_account][_token] = 0;
+                s_totalDebt[protocol][_token] -= accountDebt;
+                s_accountYield[protocol][_account][_token] -= accountDebt;
+                s_totalAccountYield[protocol][_token] -= accountDebt;
+            } else if (yieldProducedByCollateral < accountDebt) {
+                s_debt[protocol][_account][_token] -= yieldProducedByCollateral;
+                s_totalDebt[protocol][_token] -= yieldProducedByCollateral;
+                s_accountYield[protocol][_account][_token] -= yieldProducedByCollateral;
+                s_totalAccountYield[protocol][_token] -= yieldProducedByCollateral;
+            }
         }
 
-        return yieldProducedByCollateral;
-    }
-
-    // Helper that checks for new yield, updates state, and applies yield to reduce debt.
-    function _getAccountCurrentDebt(address _protocol, address _account, address _token) internal returns (uint256) {
-        uint256 newYieldProducedByCollateral = _trackAccountYeild(_protocol, _account, _token);
-
-        if (newYieldProducedByCollateral > 0 && s_debt[_protocol][_account][_token] > 0) {
-            s_debt[_protocol][_account][_token] -= newYieldProducedByCollateral;
-            s_totalDebt[_protocol][_token] -= newYieldProducedByCollateral;
-        }
-
-        return s_debt[_protocol][_account][_token];
+        uint256 accountTotalYDebtAfterRepayment = s_debt[protocol][_account][_token];
+        return accountTotalYDebtAfterRepayment;
     }
 
     // Tracks yield from collateral shares and updates user's yield history.
@@ -270,8 +255,8 @@ contract YieldWield {
     }
 
     // Returns total yield accrued for a user's collateral.
-    function getAccountTotalYield(address _account, address _token) public view returns (uint256) {
-        return s_accountYield[msg.sender][_account][_token];
+    function getAccountTotalYield(address _account, address _token) public returns (uint256) {
+        return _trackAccountYeild(msg.sender, _account, _token);
     }
 
     function getAccountTotalShareValue(address _account, address _token) public view returns (uint256) {
