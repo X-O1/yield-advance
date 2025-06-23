@@ -91,7 +91,6 @@ contract YieldWield {
         returns (uint256 _advanceMinusFee)
     {
         address protocol = msg.sender;
-
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
         uint256 advancePlusFee = _advanceAmount + advanceFee;
         uint256 advanceMinusFee = _advanceAmount - advanceFee;
@@ -150,7 +149,6 @@ contract YieldWield {
             s_debt[protocol][_account][_token] -= _amount;
             s_totalDebt[protocol][_token] -= _amount;
         }
-
         emit Advance_Repayment_Deposit(protocol, _account, _token, _amount, s_debt[protocol][_account][_token]);
         return s_debt[protocol][_account][_token];
     }
@@ -164,7 +162,6 @@ contract YieldWield {
         address protocol = msg.sender;
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
         if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
-
         s_totalRevenueShares[protocol][_token] = 0;
 
         emit Revenue_Claimed(protocol, numOfRevenueShares);
@@ -194,7 +191,6 @@ contract YieldWield {
                 s_totalAccountYield[protocol][_token] -= yieldProducedByCollateral;
             }
         }
-
         uint256 accountTotalYDebtAfterRepayment = s_debt[protocol][_account][_token];
         return accountTotalYDebtAfterRepayment;
     }
@@ -210,16 +206,15 @@ contract YieldWield {
             s_accountYield[_protocol][_account][_token] += totalYield;
             s_totalAccountYield[_protocol][_token] += totalYield;
         }
-
         return totalYield;
     }
 
     // Calculates advance fee based on collateral ratio and base percentage.
     function _getAdvanceFee(uint256 _collateral, uint256 _advanceAmount) internal pure returns (uint256) {
         uint256 baseFeePercentage = 10;
-        uint256 scaledFeePercentage = _getPercentage(_advanceAmount, _collateral);
+        uint256 scaledFeePercentage = (_advanceAmount * 100) / _collateral;
         uint256 totalFeePercentage = baseFeePercentage + scaledFeePercentage;
-        return _getPercentageAmount(_advanceAmount, totalFeePercentage);
+        return (_advanceAmount * totalFeePercentage) / 100;
     }
 
     // Gets the Aave liquidity index (scaled down to 1e6).
@@ -237,16 +232,6 @@ contract YieldWield {
     // Gets the token value for a given number of shares.
     function getShareValue(address _token, uint256 _shares) public view returns (uint256) {
         return _shares.rayMul(_getCurrentLiquidityIndex(_token));
-    }
-
-    // Returns percentage of a part relative to a whole (0-100).
-    function _getPercentage(uint256 _partNumber, uint256 _wholeNumber) internal pure returns (uint256) {
-        return (_partNumber * 100) / _wholeNumber;
-    }
-
-    // Returns the amount that represents a percentage of a whole.
-    function _getPercentageAmount(uint256 _wholeNumber, uint256 _percent) internal pure returns (uint256) {
-        return (_wholeNumber * _percent) / 100;
     }
 
     // Gets user's collateral shares for a token.
