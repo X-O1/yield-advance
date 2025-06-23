@@ -5,7 +5,7 @@ out = "out"
 libs = ["lib"]
 remappings = [
   "@chainlink/=lib/chainlink-brownie-contracts/",
-  "@openzeppelin/=lib/openzeppelin-contracts/contracts/token/",
+  "@openzeppelin/=lib/openzeppelin-contracts/contracts/",
   "forge-std/=lib/forge-std/src/",
   "@aave-v3-core/=lib/aave-v3-core/contracts/",
 ]

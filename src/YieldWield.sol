@@ -10,9 +10,12 @@ import "./YieldWieldErrors.sol";
 import {IPool} from "@aave-v3-core/interfaces/IPool.sol";
 import {DataTypes} from "@aave-v3-core/protocol/libraries/types/DataTypes.sol";
 import {IPoolAddressesProvider} from "@aave-v3-core/interfaces/IPoolAddressesProvider.sol";
+import {WadRayMath} from "@aave-v3-core/protocol/libraries/math/WadRayMath.sol";
 
 contract YieldWield {
+    using WadRayMath for uint256;
     // Aave pool instance used to retrieve liquidity index
+
     IPool private immutable i_pool;
 
     // Aave addresses provider
@@ -92,8 +95,9 @@ contract YieldWield {
         uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
         uint256 advancePlusFee = _advanceAmount + advanceFee;
         uint256 advanceMinusFee = _advanceAmount - advanceFee;
-        uint256 collateralSharesMinted = _shareConverter(_token, _collateral);
-        uint256 revenueSharesMinted = _shareConverter(_token, advanceFee);
+
+        uint256 collateralSharesMinted = _convertAmountToShares(_token, _collateral);
+        uint256 revenueSharesMinted = _convertAmountToShares(_token, advanceFee);
 
         s_collateralShares[protocol][_account][_token] += collateralSharesMinted;
         s_collateral[protocol][_account][_token] += _collateral;
@@ -160,35 +164,42 @@ contract YieldWield {
     function claimRevenue(address _token) external returns (uint256) {
         address protocol = msg.sender;
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
-        if (numOfRevenueShares == 0) {
-            revert NO_REVENUE_TO_CLAIM();
-        }
-        uint256 revSharesValue = getShareValue(_token, numOfRevenueShares);
-        uint256 yieldTokensNeededToTransfer = _shareConverter(_token, revSharesValue);
+        if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
+
+        // uint256 revSharesValue = getShareValue(_token, numOfRevenueShares);
+        // uint256 yieldTokensNeededToTransfer = _convertAmountToShares(_token, revSharesValue);
 
         s_totalRevenueShares[protocol][_token] = 0;
 
-        emit Revenue_Claimed(protocol, yieldTokensNeededToTransfer);
-        return yieldTokensNeededToTransfer;
+        emit Revenue_Claimed(protocol, numOfRevenueShares);
+        return numOfRevenueShares;
     }
 
     /**
      * @notice Updates yield and applies any to outstanding debt
      * @param _account Account whose debt should be updated
      * @param _token Token to evaluate
-     * @return Updated debt after applying yield offset
      */
-    function getAndupdateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
+    function updateAccountDebtFromYield(address _account, address _token) external returns (uint256) {
         address protocol = msg.sender;
+        uint256 yieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
+        uint256 accountDebt = s_debt[protocol][_account][_token];
 
-        uint256 newYieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
+        if (accountDebt == 0) revert NO_DEBT();
 
-        if (newYieldProducedByCollateral > 0 && s_debt[protocol][_account][_token] > 0) {
-            s_debt[protocol][_account][_token] -= newYieldProducedByCollateral;
-            s_totalDebt[protocol][_token] -= newYieldProducedByCollateral;
+        if (yieldProducedByCollateral >= accountDebt) {
+            s_debt[protocol][_account][_token] = 0;
+            s_totalDebt[protocol][_token] -= accountDebt;
+            s_accountYield[protocol][_account][_token] -= accountDebt;
+            s_totalAccountYield[protocol][_token] -= accountDebt;
+        } else if (yieldProducedByCollateral < accountDebt) {
+            s_debt[protocol][_account][_token] -= yieldProducedByCollateral;
+            s_totalDebt[protocol][_token] -= yieldProducedByCollateral;
+            s_accountYield[protocol][_account][_token] -= yieldProducedByCollateral;
+            s_totalAccountYield[protocol][_token] -= yieldProducedByCollateral;
         }
 
-        return s_debt[protocol][_account][_token];
+        return yieldProducedByCollateral;
     }
 
     // Helper that checks for new yield, updates state, and applies yield to reduce debt.
@@ -205,22 +216,17 @@ contract YieldWield {
 
     // Tracks yield from collateral shares and updates user's yield history.
     function _trackAccountYeild(address _protocol, address _account, address _token) internal returns (uint256) {
-        uint256 valueOfShares = getShareValue(_token, s_collateralShares[_protocol][_account][_token]);
-        uint256 valueOfCollateral = s_collateral[_protocol][_account][_token];
+        uint256 valueOfShares = getAccountTotalShareValue(_account, _token);
+        uint256 valueOfCollateral = getCollateralAmount(_account, _token);
         uint256 totalYield;
-        uint256 newYield;
 
         if (valueOfShares > valueOfCollateral) {
             totalYield = valueOfShares - valueOfCollateral;
+            s_accountYield[_protocol][_account][_token] += totalYield;
+            s_totalAccountYield[_protocol][_token] += totalYield;
         }
 
-        if (totalYield > s_accountYield[_protocol][_account][_token]) {
-            newYield = totalYield - s_accountYield[_protocol][_account][_token];
-            s_accountYield[_protocol][_account][_token] += newYield;
-            s_totalAccountYield[_protocol][_token] += newYield;
-        }
-
-        return newYield;
+        return totalYield;
     }
 
     // Calculates advance fee based on collateral ratio and base percentage.
@@ -233,22 +239,19 @@ contract YieldWield {
 
     // Gets the Aave liquidity index (scaled down to 1e6).
     function _getCurrentLiquidityIndex(address _token) internal view returns (uint256) {
-        DataTypes.ReserveData memory reserve = i_pool.getReserveData(_token);
-        return uint256(reserve.liquidityIndex) / 1e21;
+        uint256 currentIndex = uint256(i_pool.getReserveData(_token).liquidityIndex);
+        if (currentIndex < 1e27) revert INVALID_LIQUIDITY_INDEX();
+        return currentIndex;
     }
 
     // Converts token amount into shares using Aave liquidity index.
-    function _shareConverter(address _token, uint256 _amount) private view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
-        if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
-        return (_amount * 1e27) / currentLiquidityIndex;
+    function _convertAmountToShares(address _token, uint256 _amount) private view returns (uint256) {
+        return _amount.rayDiv(_getCurrentLiquidityIndex(_token));
     }
 
     // Gets the token value for a given number of shares.
     function getShareValue(address _token, uint256 _shares) public view returns (uint256) {
-        uint256 currentLiquidityIndex = _getCurrentLiquidityIndex(_token);
-        if (currentLiquidityIndex < 1) revert INVALID_LIQUIDITY_INDEX();
-        return (_shares * currentLiquidityIndex + 1e27 - 1) / 1e27;
+        return _shares.rayMul(_getCurrentLiquidityIndex(_token));
     }
 
     // Returns percentage of a part relative to a whole (0-100).
@@ -271,8 +274,12 @@ contract YieldWield {
         return s_accountYield[msg.sender][_account][_token];
     }
 
+    function getAccountTotalShareValue(address _account, address _token) public view returns (uint256) {
+        return getCollateralShares(_account, _token).rayMul(_getCurrentLiquidityIndex(_token));
+    }
+
     // Gets raw collateral (token amount) for a user.
-    function getCollateralAmount(address _account, address _token) external view returns (uint256) {
+    function getCollateralAmount(address _account, address _token) public view returns (uint256) {
         return s_collateral[msg.sender][_account][_token];
     }
 
