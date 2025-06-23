@@ -120,7 +120,7 @@ contract YieldWield {
     function withdrawCollateral(address _account, address _token) external returns (uint256) {
         address protocol = msg.sender;
 
-        uint256 currentDebt = updateAccountDebtFromYield(_account, _token);
+        uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
         if (currentDebt > 0) revert REPAY_ADVANCE_TO_WITHDRAW();
 
         uint256 accountCollateral = s_collateral[protocol][_account][_token];
@@ -144,7 +144,7 @@ contract YieldWield {
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         address protocol = msg.sender;
 
-        uint256 currentDebt = updateAccountDebtFromYield(_account, _token);
+        uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
         if (currentDebt > 0 && _amount <= currentDebt) {
             s_debt[protocol][_account][_token] -= _amount;
             s_totalDebt[protocol][_token] -= _amount;
@@ -173,7 +173,7 @@ contract YieldWield {
      * @param _account Account whose debt should be updated
      * @param _token Token to evaluate
      */
-    function updateAccountDebtFromYield(address _account, address _token) public returns (uint256) {
+    function _updateAccountDebtFromYield(address _account, address _token) internal returns (uint256) {
         address protocol = msg.sender;
         uint256 yieldProducedByCollateral = _trackAccountYeild(protocol, _account, _token);
         uint256 accountDebt = s_debt[protocol][_account][_token];
@@ -244,6 +244,11 @@ contract YieldWield {
         return _trackAccountYeild(msg.sender, _account, _token);
     }
 
+    // Returns accounts total debt
+    function getDebt(address _account, address _token) external returns (uint256) {
+        return _updateAccountDebtFromYield(_account, _token);
+    }
+
     function getAccountTotalShareValue(address _account, address _token) public view returns (uint256) {
         return getCollateralShares(_account, _token).rayMul(_getCurrentLiquidityIndex(_token));
     }
@@ -271,10 +276,5 @@ contract YieldWield {
     // Returns the address of this contract.
     function getYieldWieldContractAddress() external view returns (address) {
         return address(this);
-    }
-
-    // Returns accounts total debt
-    function getDebt(address _account, address _token) external view returns (uint256) {
-        return s_debt[msg.sender][_account][_token];
     }
 }

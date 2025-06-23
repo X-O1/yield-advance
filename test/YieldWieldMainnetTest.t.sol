@@ -74,8 +74,6 @@ contract YieldWieldMainnetTest is Test {
         IPool(poolAddress).supply(usdcAddress, 1, msg.sender, 0);
 
         vm.prank(protocol);
-        yieldWield.updateAccountDebtFromYield(user, usdcAddress);
-        vm.prank(protocol);
         console.logUint(yieldWield.getDebt(user, usdcAddress));
     }
 

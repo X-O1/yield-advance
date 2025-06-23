@@ -70,8 +70,6 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 2e27);
         vm.prank(protocol);
-        yieldWield.updateAccountDebtFromYield(user, usdcAddress);
-        vm.prank(protocol);
         assertEq(yieldWield.getDebt(user, usdcAddress), 0);
         vm.prank(protocol);
         assertEq(yieldWield.getAccountTotalYield(user, usdcAddress), 1000);
@@ -83,8 +81,6 @@ contract YieldWieldMainnetTest is Test {
         assertEq(yieldWield.getDebt(user2, usdcAddress), 100);
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 105e25);
-        vm.prank(protocol);
-        yieldWield.updateAccountDebtFromYield(user2, usdcAddress);
         vm.prank(protocol);
         assertEq(yieldWield.getDebt(user2, usdcAddress), 50);
         vm.prank(protocol);
@@ -133,7 +129,7 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         mockPool.setLiquidityIndex(address(usdc), 2e27);
         vm.prank(protocol);
-        assertEq(yieldWield.updateAccountDebtFromYield(user, usdcAddress), 0);
+        assertEq(yieldWield.getDebt(user, usdcAddress), 0);
         vm.prank(protocol);
         assertEq(yieldWield.getAccountTotalYield(user, usdcAddress), 1000);
     }
