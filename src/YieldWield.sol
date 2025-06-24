@@ -162,10 +162,12 @@ contract YieldWield {
         address protocol = msg.sender;
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
         if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
+
+        uint256 revShareValue = getShareValue(_token, numOfRevenueShares);
         s_totalRevenueShares[protocol][_token] = 0;
 
         emit Revenue_Claimed(protocol, numOfRevenueShares);
-        return numOfRevenueShares;
+        return revShareValue;
     }
 
     /**
@@ -269,7 +271,7 @@ contract YieldWield {
     }
 
     // Gets token value of all protocol revenue shares.
-    function getTotalRevenueShareValue(address _token) external view returns (uint256) {
+    function getTotalRevenueShareValue(address _token) public view returns (uint256) {
         return getShareValue(_token, s_totalRevenueShares[msg.sender][_token]);
     }
 
