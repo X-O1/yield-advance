@@ -43,6 +43,8 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         assertEq(yieldWield.getCollateralAmount(user, usdcAddress), 1000);
         vm.prank(protocol);
+        assertEq(yieldWield.getAccountTotalShareValue(user, usdcAddress), 1000);
+        vm.prank(protocol);
         assertEq(yieldWield.getDebt(user, usdcAddress), 100);
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 20);

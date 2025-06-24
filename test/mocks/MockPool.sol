@@ -57,8 +57,8 @@ contract MockPool {
         uint256 scaledAmount = amount.rayDiv(index);
         scaledBalances[asset][onBehalfOf] += scaledAmount;
 
-        usdc.transferFrom(msg.sender, address(this), amount);
-        aUSDC.mint(onBehalfOf, amount);
+        usdc.transferFrom(msg.sender, address(this), scaledAmount);
+        aUSDC.mint(onBehalfOf, scaledAmount);
     }
 
     function withdraw(address asset, uint256 amount, address to) external returns (uint256) {

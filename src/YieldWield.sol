@@ -95,8 +95,9 @@ contract YieldWield {
         uint256 advancePlusFee = _advanceAmount + advanceFee;
         uint256 advanceMinusFee = _advanceAmount - advanceFee;
 
-        uint256 collateralSharesMinted = _convertAmountToShares(_token, _collateral);
-        uint256 revenueSharesMinted = _convertAmountToShares(_token, advanceFee);
+        uint256 currentIndex = _getCurrentLiquidityIndex(_token);
+        uint256 collateralSharesMinted = _collateral.rayDiv(currentIndex);
+        uint256 revenueSharesMinted = advanceFee.rayDiv(currentIndex);
 
         s_collateralShares[protocol][_account][_token] += collateralSharesMinted;
         s_collateral[protocol][_account][_token] += _collateral;
@@ -217,7 +218,7 @@ contract YieldWield {
         return (_advanceAmount * totalFeePercentage) / 100;
     }
 
-    // Gets the Aave liquidity index (scaled down to 1e6).
+    // Gets the Aave liquidity index
     function _getCurrentLiquidityIndex(address _token) internal view returns (uint256) {
         uint256 currentIndex = uint256(i_pool.getReserveData(_token).liquidityIndex);
         if (currentIndex < 1e27) revert INVALID_LIQUIDITY_INDEX();
