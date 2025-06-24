@@ -95,9 +95,8 @@ contract YieldWield {
         uint256 advancePlusFee = _advanceAmount + advanceFee;
         uint256 advanceMinusFee = _advanceAmount - advanceFee;
 
-        uint256 currentIndex = _getCurrentLiquidityIndex(_token);
-        uint256 collateralSharesMinted = _collateral.rayDiv(currentIndex);
-        uint256 revenueSharesMinted = advanceFee.rayDiv(currentIndex);
+        uint256 collateralSharesMinted = _convertAmountToShares(_token, _collateral);
+        uint256 revenueSharesMinted = _convertAmountToShares(_token, advanceFee);
 
         s_collateralShares[protocol][_account][_token] += collateralSharesMinted;
         s_collateral[protocol][_account][_token] += _collateral;
