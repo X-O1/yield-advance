@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-/// @title IYieldWield
-/// @notice Interface for the YieldWield contract that manages yield advances, collateral shares, and debt logic.
-/// @dev All transfers and accounting are handled by the calling protocol. This contract only tracks metadata and yield logic.
+/**
+ * @title IYieldWield
+ * @notice Interface for YieldWield contract handling collateralized advances and revenue tracking
+ * @dev All amounts returned (unless noted) are denominated in RAY units (1e27)
+ */
 interface IYieldWield {
-    /// @notice Emitted when a user takes an advance against future yield
+    /**
+     * @notice Emitted when an advance is issued to a user
+     * @param protocol The address of the calling protocol initiating the advance
+     * @param account The user receiving the advance
+     * @param token The token used for the collateral and advance
+     * @param collateral The amount of collateral posted by the user (in base units)
+     * @param advancePlusFee The total value of the advance including protocol fee (in base units)
+     */
     event Advance_Taken(
         address indexed protocol,
         address indexed account,
@@ -14,12 +23,25 @@ interface IYieldWield {
         uint256 advancePlusFee
     );
 
-    /// @notice Emitted when collateral is withdrawn (after debt repayment)
+    /**
+     * @notice Emitted when a user successfully withdraws their collateral
+     * @param protocol The address of the protocol calling the withdrawal
+     * @param account The user withdrawing collateral
+     * @param token The token used as collateral
+     * @param collateralWithdrawn The amount of collateral returned to the user (in base units)
+     */
     event Withdraw_Collateral(
         address indexed protocol, address indexed account, address indexed token, uint256 collateralWithdrawn
     );
 
-    /// @notice Emitted when a user repays advance debt by depositing
+    /**
+     * @notice Emitted when a user repays their advance using a direct deposit
+     * @param protocol The address of the protocol processing the repayment
+     * @param account The user repaying the debt
+     * @param token The token used for repayment
+     * @param repaidAmount The amount deposited to repay the debt (in base units)
+     * @param currentDebt The remaining debt after repayment (in base units)
+     */
     event Advance_Repayment_Deposit(
         address indexed protocol,
         address indexed account,
@@ -28,116 +50,113 @@ interface IYieldWield {
         uint256 currentDebt
     );
 
-    /// @notice Emitted when protocol claims its revenue (fees)
-    event Revenue_Claimed(address indexed protocol, uint256 revAmount);
-
     /**
-     * @notice Called by protocol to grant advance to user and register debt/collateral
-     * @param _account Target user account
-     * @param _token Token used as collateral and for advance
-     * @param _collateral Amount of tokens to register as collateral
-     * @param _advanceAmount Requested advance (pre-fee)
-     * @return _advanceMinusFee Actual amount user receives after fees
+     * @notice Issues an advance to a user against their collateral.
+     * @param _account The user receiving the advance
+     * @param _token Token used as collateral
+     * @param _collateral Collateral amount (base units)
+     * @param _advanceAmount Amount to advance (base units)
+     * @return _advanceMinusFee Final amount after fees
      */
     function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
         external
         returns (uint256 _advanceMinusFee);
 
     /**
-     * @notice Allows withdrawal of all collateral for a user if they have zero debt
-     * @param _account The account requesting withdrawal
-     * @param _token Token to withdraw
-     * @return Amount of collateral returned
+     * @notice Withdraws collateral after debt has been fully repaid.
+     * @param _account The user withdrawing collateral
+     * @param _token Token used for collateral
+     * @return Amount of collateral returned (base units)
      */
     function withdrawCollateral(address _account, address _token) external returns (uint256);
 
     /**
-     * @notice Reduces user debt via direct deposit from protocol
-     * @param _account The account repaying debt
-     * @param _token Token used to repay
-     * @param _amount Amount deposited to reduce debt
-     * @return Remaining debt after repayment
+     * @notice Repays debt using a direct token deposit.
+     * @param _account User account
+     * @param _token Token to repay with
+     * @param _amount Amount being deposited (base units)
+     * @return Remaining debt after repayment (ray)
      */
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256);
 
     /**
-     * @notice Allows protocol to claim accumulated revenue from advance fees
-     * @param _token Token revenue to be claimed in
-     * @return Token amount redeemed from revenue shares
+     * @notice Claims accumulated revenue shares for the calling protocol.
+     * @param _token Token to claim revenue in
+     * @return Claimed value (base units)
      */
     function claimRevenue(address _token) external returns (uint256);
 
     /**
-     * @notice Gets the token value for a given number of shares.
-     * @param _token Token to evaluate
-     * @param _shares Number of shares to convert
-     * @return Token value corresponding to the share count
+     * @notice Returns current value of shares based on Aave liquidity index.
+     * @param _token Token address
+     * @param _shares Amount of shares in ray
+     * @return Value in base units
      */
     function getShareValue(address _token, uint256 _shares) external view returns (uint256);
 
     /**
-     * @notice Gets user's collateral shares for a token.
-     * @param _account Account to query
-     * @param _token Token used as collateral
-     * @return Number of shares held by the account
+     * @notice Gets collateral shares held by an account.
+     * @param _account User account address
+     * @param _token Token address
+     * @return Number of shares (in ray)
      */
     function getCollateralShares(address _account, address _token) external view returns (uint256);
 
     /**
-     * @notice Returns total yield accrued for a user's collateral.
-     * @param _account Account to query
-     * @param _token Token to evaluate
-     * @return Amount of yield accumulated
+     * @notice Returns total yield earned by an account so far.
+     * @param _account User account address
+     * @param _token Token address
+     * @return Amount of yield in ray
      */
     function getAccountTotalYield(address _account, address _token) external returns (uint256);
 
     /**
-     * @notice Returns account's total debt after applying any available yield
-     * @param _account Account to query
-     * @param _token Token in which the debt is denominated
-     * @return Updated total debt
+     * @notice Returns debt owed by an account, updated with any applicable yield.
+     * @param _account User account address
+     * @param _token Token address
+     * @return Updated debt value (in ray)
      */
     function getDebt(address _account, address _token) external returns (uint256);
 
     /**
-     * @notice Returns token value of all user's shares for a given token
-     * @param _account Account to evaluate
-     * @param _token Token being evaluated
-     * @return Value of all shares held by the account
+     * @notice Gets total value of all shares held by an account.
+     * @param _account User address
+     * @param _token Token address
+     * @return Value in base units
      */
     function getAccountTotalShareValue(address _account, address _token) external view returns (uint256);
 
     /**
-     * @notice Gets raw collateral (token amount) for a user.
-     * @param _account Account to query
-     * @param _token Token used as collateral
-     * @return Amount of collateral
+     * @notice Gets raw collateral (in ray) held by account.
+     * @param _account User address
+     * @param _token Token address
+     * @return Amount in ray
      */
     function getCollateralAmount(address _account, address _token) external view returns (uint256);
 
     /**
-     * @notice Gets total outstanding debt for a token across all users.
-     * @param _token Token to evaluate
-     * @return Aggregate debt amount
+     * @notice Returns total debt issued by protocol for a token.
+     * @param _token Token address
+     * @return Total debt (in ray)
      */
     function getTotalDebt(address _token) external view returns (uint256);
 
     /**
-     * @notice Gets total revenue shares accrued to the protocol.
-     * @param _token Token to evaluate
-     * @return Number of revenue shares held by the protocol
+     * @notice Returns total revenue shares held by protocol for token.
+     * @param _token Token address
+     * @return Revenue shares in ray
      */
     function getTotalRevenueShares(address _token) external view returns (uint256);
 
     /**
-     * @notice Gets token value of all protocol revenue shares.
-     * @param _token Token used for revenue shares
-     * @return Token amount value of protocol's revenue shares
+     * @notice Returns current value of all revenue shares held by protocol.
+     * @param _token Token address
+     * @return Value in base units
      */
     function getTotalRevenueShareValue(address _token) external view returns (uint256);
 
     /**
-     * @notice Returns the address of this contract.
+     * @notice Returns this contract’s address.
      * @return Contract address
      */
     function getYieldWieldContractAddress() external view returns (address);
