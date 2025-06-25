@@ -10,3 +10,4 @@ error NOT_AUTHORIZED();
 error NO_REVENUE_TO_CLAIM();
 error NO_YIELD();
 error NO_DEBT();
+error OVERFLOW();

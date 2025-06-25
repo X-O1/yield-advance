@@ -43,7 +43,7 @@ contract YieldWieldMainnetTest is Test {
 
     function testGetAdvanceAccounting() public {
         vm.prank(protocol);
-        assertEq(yieldWield.getAdvance(user, usdcAddress, 100, 20), 14);
+        assertEq(yieldWield.getAdvance(user, usdcAddress, 100, 20), 14 * RAY);
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 6 * RAY);
         vm.prank(protocol);
@@ -106,7 +106,7 @@ contract YieldWieldMainnetTest is Test {
 
     function testClaimRevenueAccounting() public {
         vm.prank(protocol);
-        assertEq(yieldWield.getAdvance(user, usdcAddress, 1000, 100), 80);
+        assertEq(yieldWield.getAdvance(user, usdcAddress, 1000, 100), 80 * RAY);
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 20 * RAY);
         vm.prank(protocol);

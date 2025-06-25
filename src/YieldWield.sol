@@ -5,7 +5,7 @@ pragma solidity ^0.8.30;
  * @title YieldWield
  * @notice Handles logic for yield advances, debt accounting, and collateral tracking using share mechanics.
  * @dev All actual token transfers and accounting are handled by the calling protocol. This contract only manages metadata and logic for shares, debt, and protocol-specific revenue.
- * @dev All numbers are in RAY units (1e27), unless otherwise stated.
+ * @dev All numbers and internal accounting are in RAY units (1e27)
  */
 import "./YieldWieldErrors.sol";
 import {IPool} from "@aave-v3-core/interfaces/IPool.sol";
@@ -23,37 +23,29 @@ contract YieldWield is IYieldWield {
     // aave address provider
     IPoolAddressesProvider public immutable i_addressesProvider;
 
-    // user collateral shares (protocol => account => token => shares)
-    mapping(address => mapping(address => mapping(address => uint256))) public s_collateralShares;
+    // RAY (1e27)
+    uint256 constant RAY = 1e27;
 
-    // total collateral shares per token (protocol => token => shares)
+    // user collateral shares
+    mapping(address => mapping(address => mapping(address => uint256))) public s_collateralShares;
     mapping(address => mapping(address => uint256)) public s_totalCollateralShares;
 
-    // user raw collateral amount (protocol => account => token => ray amount)
+    // user collateral amount
     mapping(address => mapping(address => mapping(address => uint256))) public s_collateral;
-
-    // total collateral per token (protocol => token => ray amount)
     mapping(address => mapping(address => uint256)) public s_totalCollateral;
 
-    // user debt in ray (protocol => account => token => ray debt)
+    // user debt
     mapping(address => mapping(address => mapping(address => uint256))) public s_debt;
-
-    // uotal debt in ray (protocol => token => ray debt)
     mapping(address => mapping(address => uint256)) public s_totalDebt;
 
-    // uield produced by an account (protocol => account => token => ray yield)
+    // yield produced by an account
     mapping(address => mapping(address => mapping(address => uint256))) public s_accountYield;
-
-    // total yield per token (protocol => token => ray yield)
     mapping(address => mapping(address => uint256)) public s_totalAccountYield;
 
-    // revenue shares (protocol => token => shares)
+    // revenue shares
     mapping(address => mapping(address => uint256)) public s_totalRevenueShares;
 
-    // emitted when protocol claims revenue
-    event Revenue_Claimed(address indexed protocol, uint256 revAmount);
-
-    // sets address provider and resolves pool address
+    // sets address provider and fetches pool address
     constructor(address _addressProvider) {
         i_addressesProvider = IPoolAddressesProvider(_addressProvider);
         i_pool = IPool(i_addressesProvider.getPool());
@@ -65,21 +57,20 @@ contract YieldWield is IYieldWield {
         returns (uint256 _advanceMinusFee)
     {
         address protocol = msg.sender;
-        uint256 advanceFee = _getAdvanceFee(_collateral, _advanceAmount);
-        uint256 advancePlusFee = _advanceAmount + advanceFee;
-        uint256 advanceMinusFee = _advanceAmount - advanceFee;
+        uint256 rayCollateral = _toRay(_collateral);
+        uint256 rayAdvanceAmount = _toRay(_advanceAmount);
+        uint256 advanceFee = _getRayAdvanceFee(_collateral, _advanceAmount);
+        uint256 advancePlusFee = rayAdvanceAmount + advanceFee;
 
-        uint256 collateralSharesMinted = _toRay(_collateral).rayDiv(_getCurrentLiquidityIndex(_token));
-        uint256 revenueSharesMinted = _toRay(advanceFee).rayDiv(_getCurrentLiquidityIndex(_token));
+        if (rayAdvanceAmount < advanceFee) revert OVERFLOW();
+        uint256 advanceMinusFee = rayAdvanceAmount - advanceFee;
 
-        s_collateralShares[protocol][_account][_token] += collateralSharesMinted;
-        s_collateral[protocol][_account][_token] += _toRay(_collateral);
-        s_debt[protocol][_account][_token] += _toRay(_advanceAmount);
+        uint256 collateralSharesMinted = rayCollateral.rayDiv(_getCurrentLiquidityIndex(_token));
+        uint256 revenueSharesMinted = advanceFee.rayDiv(_getCurrentLiquidityIndex(_token));
 
-        s_totalCollateralShares[protocol][_token] += collateralSharesMinted;
-        s_totalRevenueShares[protocol][_token] += revenueSharesMinted;
-        s_totalCollateral[protocol][_token] += _toRay(_collateral);
-        s_totalDebt[protocol][_token] += _toRay(_advanceAmount);
+        _updateGetAdvanceBalances(
+            protocol, _account, _token, collateralSharesMinted, rayCollateral, rayAdvanceAmount, revenueSharesMinted
+        );
 
         emit Advance_Taken(protocol, _account, _token, _collateral, advancePlusFee);
         return advanceMinusFee;
@@ -91,7 +82,7 @@ contract YieldWield is IYieldWield {
         uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
         if (currentDebt > 0) revert REPAY_ADVANCE_TO_WITHDRAW();
 
-        uint256 accountCollateral = s_collateral[protocol][_account][_token] / 1e27;
+        uint256 accountCollateral = s_collateral[protocol][_account][_token];
         uint256 accountShares = s_collateralShares[protocol][_account][_token];
 
         s_totalCollateralShares[protocol][_token] -= accountShares;
@@ -123,11 +114,31 @@ contract YieldWield is IYieldWield {
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
         if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
 
-        uint256 newRevShares = _convertAmountToShares(_token, numOfRevenueShares);
+        uint256 newRevShares = numOfRevenueShares.rayDiv(_getCurrentLiquidityIndex(_token));
         s_totalRevenueShares[protocol][_token] = 0;
 
         emit Revenue_Claimed(protocol, newRevShares);
         return newRevShares;
+    }
+
+    // updates balances for getAdvance()
+    function _updateGetAdvanceBalances(
+        address _protocol,
+        address _account,
+        address _token,
+        uint256 _collateralSharesMinted,
+        uint256 _collateral,
+        uint256 _advanceAmount,
+        uint256 _revenueSharesMinted
+    ) private {
+        s_collateralShares[_protocol][_account][_token] += _collateralSharesMinted;
+        s_collateral[_protocol][_account][_token] += _collateral;
+        s_debt[_protocol][_account][_token] += _advanceAmount;
+
+        s_totalCollateralShares[_protocol][_token] += _collateralSharesMinted;
+        s_totalRevenueShares[_protocol][_token] += _revenueSharesMinted;
+        s_totalCollateral[_protocol][_token] += _collateral;
+        s_totalDebt[_protocol][_token] += _advanceAmount;
     }
 
     // updates debt based on yield generated since last interaction
@@ -153,7 +164,7 @@ contract YieldWield is IYieldWield {
         return s_debt[protocol][_account][_token];
     }
 
-    // compares share value to raw collateral and tracks the yield difference
+    // compares share value to collateral and tracks the yield difference
     function _trackAccountYeild(address _protocol, address _account, address _token) private returns (uint256) {
         uint256 valueOfShares =
             s_collateralShares[msg.sender][_account][_token].rayMul(_getCurrentLiquidityIndex(_token));
@@ -169,12 +180,13 @@ contract YieldWield is IYieldWield {
         return totalYield;
     }
 
-    // calculates fee on advance (base 10% + linear scaling)
-    function _getAdvanceFee(uint256 _collateral, uint256 _advanceAmount) private pure returns (uint256) {
+    // calculates fee on advance: base 10% + linear scaling based on advance-to-collateral ratio
+    function _getRayAdvanceFee(uint256 _collateral, uint256 _advanceAmount) private pure returns (uint256) {
         uint256 baseFeePercentage = 10;
         uint256 scaledFeePercentage = (_advanceAmount * 100) / _collateral;
         uint256 totalFeePercentage = baseFeePercentage + scaledFeePercentage;
-        return (_advanceAmount * totalFeePercentage) / 100;
+        uint256 finalFee = (_advanceAmount * totalFeePercentage) / 100;
+        return _toRay(finalFee);
     }
 
     // gets current liquidity index from Aave
@@ -184,64 +196,57 @@ contract YieldWield is IYieldWield {
         return currentIndex;
     }
 
-    // converts base amount to Aave share amount
-    function _convertAmountToShares(address _token, uint256 _amount) private view returns (uint256) {
-        uint256 index = _getCurrentLiquidityIndex(_token);
-        uint256 numerator = _amount * 1e27 + index / 2;
-        return numerator / index;
+    // converts number to RAY (1e27) units
+    function _toRay(uint256 _num) private pure returns (uint256) {
+        return _num * 1e27;
     }
 
-    // converts number to ray format
-    function _toRay(uint256 _number) private pure returns (uint256) {
-        return _number * 1e27;
-    }
-
-    // returns share value in base units
+    /// @inheritdoc IYieldWield
     function getShareValue(address _token, uint256 _shares) external view returns (uint256) {
         return _shares.rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    // returns user collateral shares
+    /// @inheritdoc IYieldWield
     function getCollateralShares(address _account, address _token) external view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token];
     }
 
-    // Returns yield for account since last update
+    /// @inheritdoc IYieldWield
     function getAccountTotalYield(address _account, address _token) external returns (uint256) {
         return _trackAccountYeild(msg.sender, _account, _token);
     }
 
-    // Returns updated debt value
+    /// @inheritdoc IYieldWield
     function getDebt(address _account, address _token) external returns (uint256) {
         return _updateAccountDebtFromYield(_account, _token);
     }
 
-    // returns total value of account’s shares
+    /// @inheritdoc IYieldWield
     function getAccountTotalShareValue(address _account, address _token) external view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token].rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    // returns raw collateral (in ray)
+    /// @inheritdoc IYieldWield
     function getCollateralAmount(address _account, address _token) external view returns (uint256) {
         return s_collateral[msg.sender][_account][_token];
     }
 
-    // total debt (in ray)
+    /// @inheritdoc IYieldWield
     function getTotalDebt(address _token) external view returns (uint256) {
         return s_totalDebt[msg.sender][_token];
     }
 
-    // revenue shares in ray
+    /// @inheritdoc IYieldWield
     function getTotalRevenueShares(address _token) external view returns (uint256) {
         return s_totalRevenueShares[msg.sender][_token];
     }
 
-    // revenue share value in base units
+    /// @inheritdoc IYieldWield
     function getTotalRevenueShareValue(address _token) external view returns (uint256) {
         return s_totalRevenueShares[msg.sender][_token].rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    // returns address of this contract
+    /// @inheritdoc IYieldWield
     function getYieldWieldContractAddress() external view returns (address) {
         return address(this);
     }
