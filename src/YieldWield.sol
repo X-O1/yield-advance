@@ -115,11 +115,10 @@ contract YieldWield is IYieldWield {
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
         if (numOfRevenueShares == 0) revert NO_REVENUE_TO_CLAIM();
 
-        uint256 newRevShares = numOfRevenueShares.rayDiv(_getCurrentLiquidityIndex(_token));
         s_totalRevenueShares[protocol][_token] = 0;
 
-        emit Revenue_Claimed(protocol, newRevShares);
-        return newRevShares;
+        emit Revenue_Claimed(protocol, numOfRevenueShares);
+        return numOfRevenueShares;
     }
 
     // updates balances for getAdvance()

@@ -110,7 +110,9 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 20 * RAY);
         vm.prank(protocol);
-        assertEq(yieldWield.claimRevenue(usdcAddress), 20 * RAY);
+        uint256 amountOfRevShares = yieldWield.getTotalRevenueShares(usdcAddress);
+        vm.prank(protocol);
+        assertEq(yieldWield.claimRevenue(usdcAddress), amountOfRevShares);
         vm.prank(protocol);
         assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 0);
     }

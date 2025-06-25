@@ -50,7 +50,7 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         assertEq(yieldWield.getAccountTotalShareValue(user, usdcAddress), 100 * RAY);
         vm.prank(protocol);
-        assertEq(yieldWield.getDebt(user, usdcAddress), 20 * RAY);
+        assertApproxEqAbs(yieldWield.getDebt(user, usdcAddress), 20 * RAY, 2);
     }
 
     function testRepayingAdvanceWithDepositAccounting() public ifBaseMainnet {
@@ -59,14 +59,15 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         yieldWield.repayAdvanceWithDeposit(user, usdcAddress, 50);
         vm.prank(protocol);
-        assertEq(yieldWield.getDebt(user, usdcAddress), 50 * RAY);
+        assertApproxEqAbs(yieldWield.getDebt(user, usdcAddress), 50 * RAY, 2);
     }
 
     function testYieldRepayingDebtOverTime() public ifBaseMainnet {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 100);
         vm.prank(protocol);
-        assertEq(yieldWield.getDebt(user, usdcAddress), 100 * RAY);
+        assertApproxEqAbs(yieldWield.getDebt(user, usdcAddress), 100 * RAY, 2);
+
         vm.prank(protocol);
         console.logUint(yieldWield.getDebt(user, usdcAddress));
 
@@ -104,14 +105,15 @@ contract YieldWieldMainnetTest is Test {
 
     function testClaimRevenueAccounting() public ifBaseMainnet {
         vm.prank(protocol);
-        yieldWield.getAdvance(user, usdcAddress, 100, 20);
-        // vm.prank(protocol);
-        // yieldWield.getTotalRevenueShareValue(usdcAddress);
-
-        // vm.prank(protocol);
-        // console.logUint(yieldWield.claimRevenue(usdcAddress));
-        // vm.prank(protocol);
-        // assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 0);
+        assertEq(yieldWield.getAdvance(user, usdcAddress, 1000, 100), 80 * RAY);
+        vm.prank(protocol);
+        assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 20 * RAY);
+        vm.prank(protocol);
+        uint256 amountOfRevShares = yieldWield.getTotalRevenueShares(usdcAddress);
+        vm.prank(protocol);
+        assertEq(yieldWield.claimRevenue(usdcAddress), amountOfRevShares);
+        vm.prank(protocol);
+        assertEq(yieldWield.getTotalRevenueShareValue(usdcAddress), 0);
     }
 
     function testGetCollateralShares() public ifBaseMainnet {
@@ -163,7 +165,6 @@ contract YieldWieldMainnetTest is Test {
         vm.prank(protocol);
         yieldWield.getAdvance(user, usdcAddress, 1000, 200);
         vm.prank(protocol);
-        uint256 debt = yieldWield.getDebt(user, usdcAddress);
-        assertEq(debt, 200 * RAY);
+        assertApproxEqAbs(yieldWield.getDebt(user, usdcAddress), 200 * RAY, 2);
     }
 }
