@@ -868,6 +868,8 @@ hue-6-2: #e6c07b
 <li>Or allow the user to call <code>repayAdvanceWithDeposit()</code> to repay manually.</li>
 </ul>
 <p>Once their debt is zero, they can withdraw via <code>withdrawCollateral()</code>.</p>
+<h3 id="3-all-returned-values-and-internal-accounting-use-ray-units-1e27">3. All returned values and internal accounting use RAY units (1e27)</h3>
+<p>To convert back to base units (e.g. human-readable decimals), divide by 1e27.</p>
 <hr>
 <h2 id="state-model">State Model</h2>
 <p>All tracked by protocol &gt; user &gt; token:</p>

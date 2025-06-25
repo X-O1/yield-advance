@@ -84,6 +84,10 @@ You can:
 
 Once their debt is zero, they can withdraw via `withdrawCollateral()`.
 
+### 3. All returned values and internal accounting use RAY units (1e27)
+
+To convert back to base units (e.g. human-readable decimals), divide by 1e27.
+
 ---
 
 ## State Model
