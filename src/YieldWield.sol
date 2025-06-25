@@ -61,12 +61,13 @@ contract YieldWield is IYieldWield {
         uint256 rayAdvanceAmount = _toRay(_advanceAmount);
         uint256 advanceFee = _getRayAdvanceFee(_collateral, _advanceAmount);
         uint256 advancePlusFee = rayAdvanceAmount + advanceFee;
+        uint256 currentIndex = _getCurrentLiquidityIndex(_token);
 
         if (rayAdvanceAmount < advanceFee) revert OVERFLOW();
         uint256 advanceMinusFee = rayAdvanceAmount - advanceFee;
 
-        uint256 collateralSharesMinted = rayCollateral.rayDiv(_getCurrentLiquidityIndex(_token));
-        uint256 revenueSharesMinted = advanceFee.rayDiv(_getCurrentLiquidityIndex(_token));
+        uint256 collateralSharesMinted = rayCollateral.rayDiv(currentIndex);
+        uint256 revenueSharesMinted = advanceFee.rayDiv(currentIndex);
 
         _updateGetAdvanceBalances(
             protocol, _account, _token, collateralSharesMinted, rayCollateral, rayAdvanceAmount, revenueSharesMinted
