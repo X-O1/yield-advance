@@ -827,18 +827,17 @@ hue-6-2: #e6c07b
 <li>Enforce <strong>collateral lockups</strong> until debt is cleared.</li>
 <li>Accrue and isolate <strong>protocol revenue</strong> from advance fees.</li>
 </ul>
-<p>All logic, no custody.
-<strong>You move the tokens. YieldAdvance keeps score.</strong></p>
+<p>All logic, no custody.</p>
 <hr>
 <h2 id="installation-forge">Installation (Forge)</h2>
 <p>To install YieldAdvance into your Foundry project:</p>
-<pre><code class="language-bash">forge install X-O1/yieldAdvance
+<pre><code class="language-bash">forge install X-O1/yield-advance
 </code></pre>
 <p>If you’re using scoped packages or need to prevent an auto-commit:</p>
-<pre><code class="language-bash">forge install X-O1/yieldAdvance --no-commit
+<pre><code class="language-bash">forge install X-O1/yield-advance --no-commit
 </code></pre>
 <p>Once installed, import the contract in your code like this:</p>
-<pre><code class="language-solidity">import &quot;@YieldAdvance/src/YieldAdvance.sol&quot;;
+<pre><code class="language-solidity">import &quot;@YieldAdvance/contracts/YieldAdvance.sol&quot;;
 </code></pre>
 <p>Make sure your <code>remappings.txt</code> includes the correct alias if needed:</p>
 <pre><code>@YieldAdvance/=lib/YieldAdvance/
@@ -846,7 +845,7 @@ hue-6-2: #e6c07b
 <hr>
 <h2 id="use-the-interface">Use the Interface</h2>
 <p>Your protocol doesn't need to interact with the full <code>YieldAdvance</code> contract directly. For cleaner integration, import and use the provided interface:</p>
-<pre><code class="language-solidity">import &quot;@YieldAdvance/src/interfaces/IYieldAdvance.sol&quot;;
+<pre><code class="language-solidity">import &quot;@YieldAdvance/contracts/interfaces/IYieldAdvance.sol&quot;;
 </code></pre>
 <p>This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.</p>
 <hr>

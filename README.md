@@ -15,7 +15,6 @@ YieldAdvance plugs into your protocol to:
 * Accrue and isolate **protocol revenue** from advance fees.
 
 All logic, no custody.
-**You move the tokens. YieldAdvance keeps score.**
 
 ---
 
@@ -24,19 +23,19 @@ All logic, no custody.
 To install YieldAdvance into your Foundry project:
 
 ```bash
-forge install X-O1/yieldAdvance
+forge install X-O1/yield-advance
 ```
 
 If you’re using scoped packages or need to prevent an auto-commit:
 
 ```bash
-forge install X-O1/yieldAdvance --no-commit
+forge install X-O1/yield-advance --no-commit
 ```
 
 Once installed, import the contract in your code like this:
 
 ```solidity
-import "@YieldAdvance/src/YieldAdvance.sol";
+import "@YieldAdvance/contracts/YieldAdvance.sol";
 ```
 
 Make sure your `remappings.txt` includes the correct alias if needed:
@@ -52,7 +51,7 @@ Make sure your `remappings.txt` includes the correct alias if needed:
 Your protocol doesn't need to interact with the full `YieldAdvance` contract directly. For cleaner integration, import and use the provided interface:
 
 ```solidity
-import "@YieldAdvance/src/interfaces/IYieldAdvance.sol";
+import "@YieldAdvance/contracts/interfaces/IYieldAdvance.sol";
 ```
 
 This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.
