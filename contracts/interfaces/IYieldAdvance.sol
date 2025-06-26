@@ -2,11 +2,11 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title IYieldWield
- * @notice Interface for YieldWield contract handling collateralized yield advances and revenue tracking
+ * @title IYieldAdvance
+ * @notice Interface for YieldAdvance contract handling collateralized yield advances and revenue tracking
  * @dev All amounts returned are denominated in RAY units (1e27)
  */
-interface IYieldWield {
+interface IYieldAdvance {
     /**
      * @notice Emitted when an advance is issued to a user
      * @param protocol The address of the calling protocol initiating the advance
@@ -166,5 +166,5 @@ interface IYieldWield {
      * @notice Returns this contract’s address.
      * @return Contract address
      */
-    function getYieldWieldContractAddress() external view returns (address);
+    function getYieldAdvanceContractAddress() external view returns (address);
 }

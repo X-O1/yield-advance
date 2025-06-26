@@ -2,19 +2,19 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title YieldWield
+ * @title YieldAdvance
  * @notice Handles logic for yield advances, debt accounting, and collateral tracking using share mechanics.
  * @dev All actual token transfers and accounting are handled by the calling protocol. This contract only manages metadata and logic for shares, debt, and protocol-specific revenue.
  * @dev All numbers and internal accounting are in RAY units (1e27)
  */
-import "./YieldWieldErrors.sol";
+import "./YieldAdvanceErrors.sol";
 import {IPool} from "@aave-v3-core/interfaces/IPool.sol";
 import {DataTypes} from "@aave-v3-core/protocol/libraries/types/DataTypes.sol";
 import {IPoolAddressesProvider} from "@aave-v3-core/interfaces/IPoolAddressesProvider.sol";
 import {WadRayMath} from "@aave-v3-core/protocol/libraries/math/WadRayMath.sol";
-import {IYieldWield} from "./interfaces/IYieldWield.sol";
+import {IYieldAdvance} from "./interfaces/IYieldAdvance.sol";
 
-contract YieldWield is IYieldWield {
+contract YieldAdvance is IYieldAdvance {
     using WadRayMath for uint256;
 
     // aave pool interface
@@ -51,7 +51,7 @@ contract YieldWield is IYieldWield {
         i_pool = IPool(i_addressesProvider.getPool());
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
         external
         returns (uint256 _advanceMinusFee)
@@ -77,7 +77,7 @@ contract YieldWield is IYieldWield {
         return advanceMinusFee;
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function withdrawCollateral(address _account, address _token) external returns (uint256) {
         address protocol = msg.sender;
         uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
@@ -94,7 +94,7 @@ contract YieldWield is IYieldWield {
         return accountCollateral;
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         address protocol = msg.sender;
         uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
@@ -109,7 +109,7 @@ contract YieldWield is IYieldWield {
         return s_debt[protocol][_account][_token];
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function claimRevenue(address _token) external returns (uint256) {
         address protocol = msg.sender;
         uint256 numOfRevenueShares = s_totalRevenueShares[protocol][_token];
@@ -201,53 +201,53 @@ contract YieldWield is IYieldWield {
         return _num * 1e27;
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getShareValue(address _token, uint256 _shares) external view returns (uint256) {
         return _shares.rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getCollateralShares(address _account, address _token) external view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token];
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getAccountTotalYield(address _account, address _token) external returns (uint256) {
         return _trackAccountYeild(msg.sender, _account, _token);
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getDebt(address _account, address _token) external returns (uint256) {
         return _updateAccountDebtFromYield(_account, _token);
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getAccountTotalShareValue(address _account, address _token) external view returns (uint256) {
         return s_collateralShares[msg.sender][_account][_token].rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getCollateralAmount(address _account, address _token) external view returns (uint256) {
         return s_collateral[msg.sender][_account][_token];
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getTotalDebt(address _token) external view returns (uint256) {
         return s_totalDebt[msg.sender][_token];
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getTotalRevenueShares(address _token) external view returns (uint256) {
         return s_totalRevenueShares[msg.sender][_token];
     }
 
-    /// @inheritdoc IYieldWield
+    /// @inheritdoc IYieldAdvance
     function getTotalRevenueShareValue(address _token) external view returns (uint256) {
         return s_totalRevenueShares[msg.sender][_token].rayMul(_getCurrentLiquidityIndex(_token));
     }
 
-    /// @inheritdoc IYieldWield
-    function getYieldWieldContractAddress() external view returns (address) {
+    /// @inheritdoc IYieldAdvance
+    function getYieldAdvanceContractAddress() external view returns (address) {
         return address(this);
     }
 }

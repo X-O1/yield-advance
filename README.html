@@ -2,7 +2,7 @@
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>YieldWield v1</title>
+            <title>YieldAdvance</title>
             <style>
 /* From extension vscode.github */
 /*---------------------------------------------------------------------------------------------
@@ -815,11 +815,11 @@ hue-6-2: #e6c07b
         
         </head>
         <body class="vscode-body vscode-light">
-            <h1 id="yieldwield-v1">YieldWield v1</h1>
-<p>A yield re-routing plug-in that enables protocols to offer <strong>yield-backed advances</strong> to their users by leveraging idle stablecoin yield. YieldWield handles share logic, debt tracking, and yield accrual, while <strong>your protocol handles all token transfers and fund custody</strong>.</p>
+            <h1 id="yieldadvance">YieldAdvance</h1>
+<p>A yield re-routing plug-in that enables protocols to offer <strong>yield-backed advances</strong> to their users by leveraging idle stablecoin yield. YieldAdvance handles share logic, debt tracking, and yield accrual, while <strong>your protocol handles all token transfers and fund custody</strong>.</p>
 <hr>
 <h2 id="what-it-does">What It Does</h2>
-<p>YieldWield plugs into your protocol to:</p>
+<p>YieldAdvance plugs into your protocol to:</p>
 <ul>
 <li>Enable users to take <strong>instant advances</strong> against their future yield.</li>
 <li>Track user <strong>collateral</strong>, <strong>debt</strong>, and <strong>yield growth</strong> using Aave’s liquidity index.</li>
@@ -828,37 +828,37 @@ hue-6-2: #e6c07b
 <li>Accrue and isolate <strong>protocol revenue</strong> from advance fees.</li>
 </ul>
 <p>All logic, no custody.
-<strong>You move the tokens. YieldWield keeps score.</strong></p>
+<strong>You move the tokens. YieldAdvance keeps score.</strong></p>
 <hr>
 <h2 id="installation-forge">Installation (Forge)</h2>
-<p>To install YieldWield into your Foundry project:</p>
-<pre><code class="language-bash">forge install X-O1/yieldwield
+<p>To install YieldAdvance into your Foundry project:</p>
+<pre><code class="language-bash">forge install X-O1/yieldAdvance
 </code></pre>
 <p>If you’re using scoped packages or need to prevent an auto-commit:</p>
-<pre><code class="language-bash">forge install X-O1/yieldwield --no-commit
+<pre><code class="language-bash">forge install X-O1/yieldAdvance --no-commit
 </code></pre>
 <p>Once installed, import the contract in your code like this:</p>
-<pre><code class="language-solidity">import &quot;@YieldWield/src/YieldWield.sol&quot;;
+<pre><code class="language-solidity">import &quot;@YieldAdvance/src/YieldAdvance.sol&quot;;
 </code></pre>
 <p>Make sure your <code>remappings.txt</code> includes the correct alias if needed:</p>
-<pre><code>@YieldWield/=lib/YieldWield/
+<pre><code>@YieldAdvance/=lib/YieldAdvance/
 </code></pre>
 <hr>
 <h2 id="use-the-interface">Use the Interface</h2>
-<p>Your protocol doesn't need to interact with the full <code>YieldWield</code> contract directly. For cleaner integration, import and use the provided interface:</p>
-<pre><code class="language-solidity">import &quot;@YieldWield/src/interfaces/IYieldWield.sol&quot;;
+<p>Your protocol doesn't need to interact with the full <code>YieldAdvance</code> contract directly. For cleaner integration, import and use the provided interface:</p>
+<pre><code class="language-solidity">import &quot;@YieldAdvance/src/interfaces/IYieldAdvance.sol&quot;;
 </code></pre>
 <p>This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.</p>
 <hr>
 <h2 id="integration-overview">Integration Overview</h2>
 <h3 id="1-you-custody-the-funds">1. You Custody the Funds</h3>
-<p>You own the funds. YieldWield never transfers tokens. All transfers (deposits, withdrawals, repayments) must happen in your protocol.</p>
+<p>You own the funds. YieldAdvance never transfers tokens. All transfers (deposits, withdrawals, repayments) must happen in your protocol.</p>
 <h3 id="2-collateral--advance-flow">2. Collateral + Advance Flow</h3>
 <p>When a user takes an advance:</p>
 <ul>
 <li>You deposit the user's idle yield-generating stablecoins (e.g. aUSDC).</li>
-<li>You call <code>getAdvance()</code> on YieldWield.</li>
-<li>YieldWield tracks the collateral, computes shares, adds protocol fee, and returns the net advance.</li>
+<li>You call <code>getAdvance()</code> on YieldAdvance.</li>
+<li>YieldAdvance tracks the collateral, computes shares, adds protocol fee, and returns the net advance.</li>
 </ul>
 <p>You then send the user the actual tokens for the advance on your end.</p>
 <h3 id="3-yield-auto-repayment">3. Yield Auto-Repayment</h3>
@@ -882,22 +882,22 @@ hue-6-2: #e6c07b
 <hr>
 <h2 id="example-advance-flow">Example Advance Flow</h2>
 <pre><code class="language-solidity">IERC20(aToken).transferFrom(user, protocol, amount);
-uint256 netAdvance = yieldWield.getAdvance(user, aToken, collateralAmount, requestedAdvance);
+uint256 netAdvance = yieldAdvance.getAdvance(user, aToken, collateralAmount, requestedAdvance);
 // You now send netAdvance to the user from your treasury
 </code></pre>
 <h2 id="example-yield-repayment-flow">Example Yield Repayment Flow</h2>
-<pre><code class="language-solidity">uint256 newDebt = yieldWield.getAndupdateAccountDebtFromYield(user, aToken);
+<pre><code class="language-solidity">uint256 newDebt = yieldAdvance.getAndupdateAccountDebtFromYield(user, aToken);
 </code></pre>
 <h2 id="example-repayment-via-deposit">Example Repayment via Deposit</h2>
 <pre><code class="language-solidity">IERC20(aToken).transferFrom(user, protocol, amount);
-yieldWield.repayAdvanceWithDeposit(user, aToken, amount);
+yieldAdvance.repayAdvanceWithDeposit(user, aToken, amount);
 </code></pre>
 <hr>
 <h2 id="what-it-does-not-do">What It Does <em>Not</em> Do</h2>
 <ul>
-<li>YieldWield <strong>does not store</strong> tokens</li>
-<li>YieldWield <strong>does not handle</strong> actual transfers</li>
-<li>YieldWield <strong>does not verify balances</strong></li>
+<li>YieldAdvance <strong>does not store</strong> tokens</li>
+<li>YieldAdvance <strong>does not handle</strong> actual transfers</li>
+<li>YieldAdvance <strong>does not verify balances</strong></li>
 </ul>
 <p>That’s all on your end.</p>
 <hr>
@@ -910,17 +910,9 @@ yieldWield.repayAdvanceWithDeposit(user, aToken, amount);
 </ul>
 <hr>
 <h2 id="contract-deployment">Contract Deployment</h2>
-<pre><code class="language-solidity">new YieldWield(addressesProvider);
+<pre><code class="language-solidity">new YieldAdvance(addressesProvider);
 </code></pre>
 <p>Where <code>addressesProvider</code> is Aave v3's PoolAddressesProvider (e.g. for mainnet).</p>
-<hr>
-<h2 id="coming-in-v2---yieldwield-marketplace-a-peer-to-peer-marketplace-for-time-shifted-yield">Coming in V2 - YieldWield Marketplace: A Peer-to-Peer Marketplace for Time-Shifted Yield</h2>
-<p>YieldWield v2 will evolve into a full peer-to-peer marketplace — where users can request advances with custom terms, and DeFi power users choose which ones to fund in exchange for above-market yield.</p>
-<hr>
-<h2 id="need-help">Need Help?</h2>
-<p>Open an issue or contact the original developer:
-Email: <a href="mailto:yieldwield@protonmail.com">yieldwield@protonmail.com</a>
-X (formally Twitter): <a href="https://x.com/YieldWield_com">https://x.com/YieldWield_com</a></p>
 
             
             

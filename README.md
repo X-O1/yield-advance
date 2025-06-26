@@ -1,12 +1,12 @@
-# YieldWield v1
+# YieldAdvance
 
-A yield re-routing plug-in that enables protocols to offer **yield-backed advances** to their users by leveraging idle stablecoin yield. YieldWield handles share logic, debt tracking, and yield accrual, while **your protocol handles all token transfers and fund custody**.
+A yield re-routing plug-in that enables protocols to offer **yield-backed advances** to their users by leveraging idle stablecoin yield. YieldAdvance handles share logic, debt tracking, and yield accrual, while **your protocol handles all token transfers and fund custody**.
 
 ---
 
 ## What It Does
 
-YieldWield plugs into your protocol to:
+YieldAdvance plugs into your protocol to:
 
 * Enable users to take **instant advances** against their future yield.
 * Track user **collateral**, **debt**, and **yield growth** using Aave’s liquidity index.
@@ -15,44 +15,44 @@ YieldWield plugs into your protocol to:
 * Accrue and isolate **protocol revenue** from advance fees.
 
 All logic, no custody.
-**You move the tokens. YieldWield keeps score.**
+**You move the tokens. YieldAdvance keeps score.**
 
 ---
 
 ## Installation (Forge)
 
-To install YieldWield into your Foundry project:
+To install YieldAdvance into your Foundry project:
 
 ```bash
-forge install X-O1/yieldwield
+forge install X-O1/yieldAdvance
 ```
 
 If you’re using scoped packages or need to prevent an auto-commit:
 
 ```bash
-forge install X-O1/yieldwield --no-commit
+forge install X-O1/yieldAdvance --no-commit
 ```
 
 Once installed, import the contract in your code like this:
 
 ```solidity
-import "@YieldWield/src/YieldWield.sol";
+import "@YieldAdvance/src/YieldAdvance.sol";
 ```
 
 Make sure your `remappings.txt` includes the correct alias if needed:
 
 ```
-@YieldWield/=lib/YieldWield/
+@YieldAdvance/=lib/YieldAdvance/
 ```
 
 ---
 
 ## Use the Interface
 
-Your protocol doesn't need to interact with the full `YieldWield` contract directly. For cleaner integration, import and use the provided interface:
+Your protocol doesn't need to interact with the full `YieldAdvance` contract directly. For cleaner integration, import and use the provided interface:
 
 ```solidity
-import "@YieldWield/src/interfaces/IYieldWield.sol";
+import "@YieldAdvance/src/interfaces/IYieldAdvance.sol";
 ```
 
 This gives you access to the external functions your protocol needs, with no need to compile the full implementation. Useful for mocks, testing, and cleaner dependency management.
@@ -63,15 +63,15 @@ This gives you access to the external functions your protocol needs, with no nee
 
 ### 1. You Custody the Funds
 
-You own the funds. YieldWield never transfers tokens. All transfers (deposits, withdrawals, repayments) must happen in your protocol.
+You own the funds. YieldAdvance never transfers tokens. All transfers (deposits, withdrawals, repayments) must happen in your protocol.
 
 ### 2. Collateral + Advance Flow
 
 When a user takes an advance:
 
 * You deposit the user's idle yield-generating stablecoins (e.g. aUSDC).
-* You call `getAdvance()` on YieldWield.
-* YieldWield tracks the collateral, computes shares, adds protocol fee, and returns the net advance.
+* You call `getAdvance()` on YieldAdvance.
+* YieldAdvance tracks the collateral, computes shares, adds protocol fee, and returns the net advance.
 
 You then send the user the actual tokens for the advance on your end.
 
@@ -105,30 +105,30 @@ All tracked by protocol > user > token:
 
 ```solidity
 IERC20(aToken).transferFrom(user, protocol, amount);
-uint256 netAdvance = yieldWield.getAdvance(user, aToken, collateralAmount, requestedAdvance);
+uint256 netAdvance = yieldAdvance.getAdvance(user, aToken, collateralAmount, requestedAdvance);
 // You now send netAdvance to the user from your treasury
 ```
 
 ## Example Yield Repayment Flow
 
 ```solidity
-uint256 newDebt = yieldWield.getAndupdateAccountDebtFromYield(user, aToken);
+uint256 newDebt = yieldAdvance.getAndupdateAccountDebtFromYield(user, aToken);
 ```
 
 ## Example Repayment via Deposit
 
 ```solidity
 IERC20(aToken).transferFrom(user, protocol, amount);
-yieldWield.repayAdvanceWithDeposit(user, aToken, amount);
+yieldAdvance.repayAdvanceWithDeposit(user, aToken, amount);
 ```
 
 ---
 
 ## What It Does *Not* Do
 
-* YieldWield **does not store** tokens
-* YieldWield **does not handle** actual transfers
-* YieldWield **does not verify balances**
+* YieldAdvance **does not store** tokens
+* YieldAdvance **does not handle** actual transfers
+* YieldAdvance **does not verify balances**
 
 That’s all on your end.
 
@@ -146,21 +146,8 @@ That’s all on your end.
 ## Contract Deployment
 
 ```solidity
-new YieldWield(addressesProvider);
+new YieldAdvance(addressesProvider);
 ```
 
 Where `addressesProvider` is Aave v3's PoolAddressesProvider (e.g. for mainnet).
 
----
-
-## Coming in V2 - YieldWield Marketplace: A Peer-to-Peer Marketplace for Time-Shifted Yield
-
-YieldWield v2 will evolve into a full peer-to-peer marketplace — where users can request advances with custom terms, and DeFi power users choose which ones to fund in exchange for above-market yield.
-
----
-
-## Need Help?
-
-Open an issue or contact the original developer:
-Email: [yieldwield@protonmail.com](mailto:yieldwield@protonmail.com)
-X (formally Twitter): [https://x.com/YieldWield\_com](https://x.com/YieldWield_com)
