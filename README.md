@@ -1,6 +1,6 @@
 # YieldAdvance
 
-A yield re-routing plug-in that enables protocols to offer **yield-backed advances** to their users by leveraging idle stablecoin yield. YieldAdvance handles share logic, debt tracking, and yield accrual, while **your protocol handles all token transfers and fund custody**.
+Enables protocols to offer **yield-backed advances** to their users by leveraging idle stablecoin yield. YieldAdvance handles share logic, debt tracking, and yield accrual, while **your protocol handles all token transfers and fund custody**.
 
 ---
 
