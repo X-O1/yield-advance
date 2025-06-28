@@ -17,6 +17,7 @@ import {IYieldAdvance} from "./interfaces/IYieldAdvance.sol";
 contract YieldAdvance is IYieldAdvance {
     using WadRayMath for uint256;
     // aave pool interface
+
     IPool private immutable i_pool;
     // aave address provider
     IPoolAddressesProvider public immutable i_addressesProvider;
@@ -39,8 +40,8 @@ contract YieldAdvance is IYieldAdvance {
     }
 
     // account balances
-    mapping(address protocol => mapping(address account => mapping(address token => AccountBalances)))
-        public s_accountBalances;
+    mapping(address protocol => mapping(address account => mapping(address token => AccountBalances))) public
+        s_accountBalances;
     // protocol balances
     mapping(address protocol => mapping(address token => ProtocolBalances)) public s_protocolBalances;
 
@@ -51,12 +52,10 @@ contract YieldAdvance is IYieldAdvance {
     }
 
     /// @inheritdoc IYieldAdvance
-    function getAdvance(
-        address _account,
-        address _token,
-        uint256 _collateral,
-        uint256 _advanceAmount
-    ) external returns (uint256 _advanceMinusFee) {
+    function getAdvance(address _account, address _token, uint256 _collateral, uint256 _advanceAmount)
+        external
+        returns (uint256 _advanceMinusFee)
+    {
         uint256 rayCollateral = _toRay(_collateral);
         uint256 rayAdvanceAmount = _toRay(_advanceAmount);
         uint256 advanceFee = _getRayAdvanceFee(_collateral, _advanceAmount);
@@ -70,13 +69,7 @@ contract YieldAdvance is IYieldAdvance {
         uint256 revenueSharesMinted = advanceFee.rayDiv(currentIndex);
 
         _updateGetAdvanceBalances(
-            msg.sender,
-            _account,
-            _token,
-            collateralSharesMinted,
-            rayCollateral,
-            rayAdvanceAmount,
-            revenueSharesMinted
+            msg.sender, _account, _token, collateralSharesMinted, rayCollateral, rayAdvanceAmount, revenueSharesMinted
         );
 
         emit Advance_Taken(msg.sender, _account, _token, _collateral, advancePlusFee);
@@ -100,11 +93,7 @@ contract YieldAdvance is IYieldAdvance {
     }
 
     /// @inheritdoc IYieldAdvance
-    function repayAdvanceWithDeposit(
-        address _account,
-        address _token,
-        uint256 _amount
-    ) external returns (uint256) {
+    function repayAdvanceWithDeposit(address _account, address _token, uint256 _amount) external returns (uint256) {
         uint256 currentDebt = _updateAccountDebtFromYield(_account, _token);
 
         uint256 amountRay = _toRay(_amount);
@@ -114,11 +103,7 @@ contract YieldAdvance is IYieldAdvance {
         }
 
         emit Advance_Repayment_Deposit(
-            msg.sender,
-            _account,
-            _token,
-            _amount,
-            s_accountBalances[msg.sender][_account][_token].debt / 1e27
+            msg.sender, _account, _token, _amount, s_accountBalances[msg.sender][_account][_token].debt / 1e27
         );
         return s_accountBalances[msg.sender][_account][_token].debt;
     }
@@ -177,14 +162,9 @@ contract YieldAdvance is IYieldAdvance {
     }
 
     // compares share value to collateral and tracks the yield difference
-    function _trackAccountYeild(
-        address _protocol,
-        address _account,
-        address _token
-    ) private returns (uint256) {
-        uint256 valueOfShares = s_accountBalances[_protocol][_account][_token].collateralShares.rayMul(
-            _getCurrentLiquidityIndex(_token)
-        );
+    function _trackAccountYeild(address _protocol, address _account, address _token) private returns (uint256) {
+        uint256 valueOfShares =
+            s_accountBalances[_protocol][_account][_token].collateralShares.rayMul(_getCurrentLiquidityIndex(_token));
         uint256 valueOfCollateral = s_accountBalances[_protocol][_account][_token].collataral;
         uint256 totalYield;
 
@@ -241,9 +221,7 @@ contract YieldAdvance is IYieldAdvance {
     /// @inheritdoc IYieldAdvance
     function getAccountTotalShareValue(address _account, address _token) external view returns (uint256) {
         return
-            s_accountBalances[msg.sender][_account][_token].collateralShares.rayMul(
-                _getCurrentLiquidityIndex(_token)
-            );
+            s_accountBalances[msg.sender][_account][_token].collateralShares.rayMul(_getCurrentLiquidityIndex(_token));
     }
 
     /// @inheritdoc IYieldAdvance
@@ -263,10 +241,7 @@ contract YieldAdvance is IYieldAdvance {
 
     /// @inheritdoc IYieldAdvance
     function getTotalRevenueShareValue(address _token) external view returns (uint256) {
-        return
-            s_protocolBalances[msg.sender][_token].totalRevenueShares.rayMul(
-                _getCurrentLiquidityIndex(_token)
-            );
+        return s_protocolBalances[msg.sender][_token].totalRevenueShares.rayMul(_getCurrentLiquidityIndex(_token));
     }
 
     /// @inheritdoc IYieldAdvance
